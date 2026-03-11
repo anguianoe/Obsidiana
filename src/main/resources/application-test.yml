@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/obsidiana_test
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.nexcoyo.knowledge.obsidiana: DEBUG
+    org.springframework.web: DEBUG

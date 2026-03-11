@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://staging-db:5432/obsidiana_stage}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    com.nexcoyo.knowledge.obsidiana: INFO
+    org.springframework: WARN
