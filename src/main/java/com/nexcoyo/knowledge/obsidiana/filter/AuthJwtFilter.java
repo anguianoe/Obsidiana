@@ -72,7 +72,14 @@ public class AuthJwtFilter extends OncePerRequestFilter
                                                                          .map( SimpleGrantedAuthority::new)
                                                                          .toList();
 
-            UUID userId = claims.get("idUser", UUID.class);
+            Object idUserClaim = claims.get("idUser");
+            UUID userId = null;
+            if (idUserClaim instanceof UUID uuid) {
+                userId = uuid;
+            } else if (idUserClaim instanceof String raw && !raw.isBlank()) {
+                userId = UUID.fromString(raw);
+            }
+
             AuthUser principal = new AuthUser(userId, email);
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
@@ -83,11 +90,9 @@ public class AuthJwtFilter extends OncePerRequestFilter
         } catch ( ExpiredJwtException e) {
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expired");
-        } catch ( JwtException e) {
+        } catch ( JwtException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
         }
     }
 }
-
-

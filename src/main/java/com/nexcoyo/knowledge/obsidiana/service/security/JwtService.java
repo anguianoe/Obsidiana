@@ -67,7 +67,7 @@ public class JwtService {
         return new TokenPair(access, refresh, accessExp.getEpochSecond() - now.getEpochSecond());
     }
 
-    public Claims parse( String jwt) {
+    public Claims parse(String jwt) {
         return Jwts.parser()
                    .verifyWith((javax.crypto.SecretKey) key)
                    .build()
@@ -83,7 +83,7 @@ public class JwtService {
         return "access".equals(claims.get("typ", String.class));
     }
 
-    public TokenPair issueAccessToken( String email, UUID idUser, SystemRole rol,  List<String> roles) {
+    public TokenPair issueAccessToken(String email, UUID idUser, String userType, List<String> roles) {
         var now = Instant.now();
         var accessExp = now.plusSeconds(accessMinutes * 60);
 
@@ -92,7 +92,7 @@ public class JwtService {
                             .subject(email)
                             .claims(Map.of(
                                     "roles", roles,
-                                    "userType", rol.name(),
+                                    "userType", userType,
                                     "idUser", idUser,
                                     "typ", "access"
                             ))

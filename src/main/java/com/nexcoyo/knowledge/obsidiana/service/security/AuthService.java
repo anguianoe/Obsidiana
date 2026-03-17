@@ -90,7 +90,7 @@ public class AuthService {
 
         // Access JWT
         List<String> roles = List.of(user.getRoles().split(","));
-        JwtService.TokenPair access = jwtService.issueAccessToken(user.getEmail(), user.getId(),user.getSystemRole(), roles);
+        JwtService.TokenPair access = jwtService.issueAccessToken(user.getEmail(), user.getId(),user.getSystemRole().name(), roles);
 
 
         // Refresh token (opaque) stored hashed
@@ -178,7 +178,7 @@ public class AuthService {
         refreshTokens.save(currentTokenHash);
 
         List<String> roles = List.of(user.getRoles().split(","));
-        JwtService.TokenPair access = jwtService.issueAccessToken(user.getEmail(),user.getId(), user.getSystemRole(), roles);
+        JwtService.TokenPair access = jwtService.issueAccessToken(user.getEmail(),user.getId(), user.getSystemRole().name(), roles);
 
         Map<String, Object> body = new java.util.HashMap<>();
         body.put("accessToken", access.accessToken());

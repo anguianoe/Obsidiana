@@ -57,12 +57,10 @@ public class SecurityConfig {
                                     PathPatternRequestMatcher.withDefaults().matcher("/**/*.ttf")
                             ).permitAll()
                             .requestMatchers( HttpMethod.GET, "/actuator/health").permitAll()
-
-                            //.requestMatchers(API + "/auth/**").permitAll()
-
+                            .requestMatchers(API + "/auth/**").permitAll()
                             .requestMatchers(
                                     API + "/users/**"
-                            ).permitAll()
+                            ).hasRole( "SUPER_ADMIN" )
                             /*
 
                             // ✅ ADMIN o USER
