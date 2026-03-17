@@ -1,0 +1,66 @@
+package com.nexcoyo.knowledge.obsidiana.service.specification;
+
+import java.util.UUID;
+
+import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
+import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
+import com.nexcoyo.knowledge.obsidiana.service.dto.search.WorkspaceSearchCriteria;
+import org.springframework.data.jpa.domain.Specification;
+
+public final class WorkspaceSpecifications {
+
+    private WorkspaceSpecifications() {
+    }
+
+    public static Specification< Workspace > byCriteria( WorkspaceSearchCriteria criteria) {
+        return Specification.allOf(
+            likeNameOrSlug(criteria.getNameOrSlug()),
+            hasKind(criteria.getKind()),
+            hasStatus(criteria.getStatus()),
+            hasApprovalStatus(criteria.getApprovalStatus()),
+            createdBy(criteria.getOnlyOwned() != null && criteria.getOnlyOwned() ? criteria.getUserId() : null),
+            memberUser(criteria.getOnlyMember() != null && criteria.getOnlyMember() ? criteria.getUserId() : null)
+        );
+    }
+
+    public static Specification<Workspace> likeNameOrSlug(String value) {
+        return (root, query, cb) -> {
+            if (value == null || value.isBlank()) return null;
+            String pattern = "%" + value.toLowerCase() + "%";
+            return cb.or(
+                cb.like(cb.lower(root.get("name")), pattern),
+                cb.like(cb.lower(root.get("slug")), pattern)
+            );
+        };
+    }
+
+    public static Specification<Workspace> hasKind(Enum<?> kind) {
+        return (root, query, cb) -> kind == null ? null : cb.equal(root.get("kind"), kind);
+    }
+
+    public static Specification<Workspace> hasStatus(Enum<?> status) {
+        return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
+    }
+
+    public static Specification<Workspace> hasApprovalStatus(Enum<?> approvalStatus) {
+        return (root, query, cb) -> approvalStatus == null ? null : cb.equal(root.get("approvalStatus"), approvalStatus);
+    }
+
+    public static Specification<Workspace> createdBy(UUID userId) {
+        return (root, query, cb) -> userId == null ? null : cb.equal(root.get("createdBy").get("id"), userId);
+    }
+
+    public static Specification<Workspace> memberUser(UUID userId) {
+        return (root, query, cb) -> {
+            if (userId == null) return null;
+            var sq = query.subquery(UUID.class);
+            var membership = sq.from( WorkspaceMembership.class);
+            sq.select(membership.get("workspace").get("id"));
+            sq.where(
+                cb.equal(membership.get("workspace").get("id"), root.get("id")),
+                cb.equal(membership.get("user").get("id"), userId)
+            );
+            return cb.exists(sq);
+        };
+    }
+}

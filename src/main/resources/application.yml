@@ -1,29 +1,58 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: Obsidiana
   profiles:
     active: dev
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/obsidiana}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
+    show-sql: false
+    open-in-view: false
     hibernate:
       ddl-auto: validate
-    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+          fetch_size: 100
+        default_schema: public
 
-server:
-  port: ${PORT:8080}
+  flyway:
+    enabled: true
 
-application:
+  main:
+    log-startup-info: false
+
+logging:
+  level:
+    root: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+app:
   security:
     jwt:
-      secret-key: ${JWT_SECRET_KEY}
-      expiration: ${JWT_EXPIRATION:86400000}
-      refresh-token:
-        expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+      issuer: "obsidian-api"
+      secret: "${JWT_SECRET}"
+      accessTokenMinutes: 15
+    refresh:
+      days: 14
+    resetPassword:
+      tokenMinutes: 30
+    max-sessions: 2

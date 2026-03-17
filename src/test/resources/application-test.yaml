@@ -1,0 +1,29 @@
+---
+spring:
+  datasource:
+    url: jdbc:h2:mem:frailesdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ''
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  # Provide the email contact used by beans that reference ${spring.email-contact}
+  email-contact: test@example.com
+
+app:
+  security:
+    jwt:
+      issuer: "test-issuer"
+      # Must be sufficiently long for HMAC key (>= 32 bytes). Using a long random string for tests.
+      secret: "bW9ja1Rlc3RrZXlUb1VzZVNvOmlzMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3A="
+      accessTokenMinutes: 60
+    refresh:
+      days: 14
+    resetPassword:
+      tokenMinutes: 30
