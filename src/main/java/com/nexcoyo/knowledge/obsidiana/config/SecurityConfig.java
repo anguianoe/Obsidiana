@@ -59,7 +59,8 @@ public class SecurityConfig {
                             .requestMatchers( HttpMethod.GET, "/actuator/health").permitAll()
                             .requestMatchers(API + "/auth/**").permitAll()
                             .requestMatchers(
-                                    API + "/users/**"
+                                    API + "/users/**",
+                                    API + "/workspaces/**"
                             ).hasRole( "SUPER_ADMIN" )
                             /*
 

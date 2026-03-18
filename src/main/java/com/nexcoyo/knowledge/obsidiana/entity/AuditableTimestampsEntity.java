@@ -2,11 +2,12 @@ package com.nexcoyo.knowledge.obsidiana.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -21,4 +22,20 @@ public abstract class AuditableTimestampsEntity extends BaseUuidEntity {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        Instant now = Instant.now();
+        if (createdAt == null) {
+            createdAt = now;
+        }
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
 }

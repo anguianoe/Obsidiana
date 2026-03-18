@@ -17,6 +17,8 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID>, Jpa
 
     boolean existsBySlug(String slug);
 
+    Optional<Workspace> findByIdAndCreatedById(UUID workspaceId, UUID userId);
+
     @Query("""
         select w.id as workspaceId,
                w.name as workspaceName,

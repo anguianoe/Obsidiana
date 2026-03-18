@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
 import com.nexcoyo.knowledge.obsidiana.service.dto.search.WorkspaceSearchCriteria;
+import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class WorkspaceSpecifications {
@@ -12,14 +13,35 @@ public final class WorkspaceSpecifications {
     private WorkspaceSpecifications() {
     }
 
+    public static Specification< Workspace > notDeleted() {
+        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
+    }
+
     public static Specification< Workspace > byCriteria( WorkspaceSearchCriteria criteria) {
         return Specification.allOf(
+            notDeleted(),
             likeNameOrSlug(criteria.getNameOrSlug()),
             hasKind(criteria.getKind()),
             hasStatus(criteria.getStatus()),
             hasApprovalStatus(criteria.getApprovalStatus()),
             createdBy(criteria.getOnlyOwned() != null && criteria.getOnlyOwned() ? criteria.getUserId() : null),
             memberUser(criteria.getOnlyMember() != null && criteria.getOnlyMember() ? criteria.getUserId() : null)
+        );
+    }
+
+    public static Specification< Workspace > byCreatedBy(UUID userId, String nameOrSlug, WorkspaceStatus status) {
+        return Specification.allOf(
+            notDeleted(),
+            createdBy(userId),
+            likeNameOrSlug(nameOrSlug),
+            hasStatus(status)
+        );
+    }
+
+    public static Specification< Workspace > adminList(WorkspaceStatus status) {
+        return Specification.allOf(
+            notDeleted(),
+            hasStatus(status)
         );
     }
 
