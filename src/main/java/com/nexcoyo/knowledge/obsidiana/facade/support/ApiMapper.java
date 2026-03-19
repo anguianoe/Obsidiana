@@ -47,12 +47,31 @@ import com.nexcoyo.knowledge.obsidiana.projection.PublicPageSummaryProjection;
 import com.nexcoyo.knowledge.obsidiana.projection.RevisionSummaryProjection;
 import com.nexcoyo.knowledge.obsidiana.projection.WorkspaceSummaryProjection;
 
-import java.util.Optional;
-
 public final class ApiMapper {
     private ApiMapper() {}
 
     public static WorkspaceResponse toResponse( Workspace entity) {
+        return toResponse(entity, null);
+    }
+
+    public static WorkspaceResponse toResponse(
+            Workspace entity,
+            com.nexcoyo.knowledge.obsidiana.entity.UserProfile creatorProfile) {
+
+        WorkspaceResponse.CreatorSummary creator = null;
+        if (entity.getCreatedBy() != null) {
+            com.nexcoyo.knowledge.obsidiana.entity.AppUser u = entity.getCreatedBy();
+            creator = new WorkspaceResponse.CreatorSummary(
+                u.getId(),
+                u.getUsername(),
+                u.getStatus(),
+                creatorProfile == null ? null : creatorProfile.getDisplayName(),
+                creatorProfile == null || creatorProfile.getAvatarAsset() == null
+                    ? null : creatorProfile.getAvatarAsset().getId(),
+                creatorProfile == null ? null : creatorProfile.getCountry()
+            );
+        }
+
         return new WorkspaceResponse(
             entity.getId(),
             entity.getName(),
@@ -61,6 +80,7 @@ public final class ApiMapper {
             entity.getStatus(),
             entity.getApprovalStatus(),
             idOf(entity.getCreatedBy()),
+            creator,
             idOf(entity.getApprovedBy()),
             entity.getApprovedAt(),
             entity.getDescription(),
@@ -81,6 +101,10 @@ public final class ApiMapper {
             entity.getId(),
             idOf(entity.getWorkspace()),
             idOf(entity.getUser()),
+            entity.getUser() == null ? null : entity.getUser().getUsername(),
+            entity.getUser() == null ? null : entity.getUser().getStatus(),
+            null,
+            null,
             entity.getRole(),
             entity.getStatus(),
             entity.getJoinedAt(),

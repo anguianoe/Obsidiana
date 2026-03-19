@@ -15,6 +15,7 @@ import com.nexcoyo.knowledge.obsidiana.service.specification.WorkspaceSpecificat
 import com.nexcoyo.knowledge.obsidiana.util.enums.ApprovalStatus;
 import com.nexcoyo.knowledge.obsidiana.util.enums.InvitationStatus;
 import com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus;
 import jakarta.persistence.EntityManager;
@@ -69,7 +70,48 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public Workspace save(Workspace workspace) {
-        return workspaceRepository.save(workspace);
+        boolean isNewWorkspace = workspace.getId() == null;
+
+        if (workspace.getKind() == null) {
+            throw new IllegalArgumentException("Workspace kind is required");
+        }
+
+        // Business rule: approval and workspace status are derived from workspace kind on create/update.
+        workspace.setApprovalStatus(resolveApprovalStatusByKind(workspace.getKind()));
+        workspace.setStatus(resolveWorkspaceStatusByKind(workspace.getKind()));
+
+        if (isNewWorkspace && workspace.getCreatedBy() == null) {
+            throw new IllegalArgumentException("Workspace creator is required");
+        }
+
+        Workspace savedWorkspace = workspaceRepository.save(workspace);
+
+        if (isNewWorkspace) {
+            WorkspaceMembership ownerMembership = new WorkspaceMembership();
+            ownerMembership.setWorkspace(savedWorkspace);
+            ownerMembership.setUser(savedWorkspace.getCreatedBy());
+            ownerMembership.setRole(WorkspaceRole.OWNER);
+            ownerMembership.setStatus(MembershipStatus.ACTIVE);
+            ownerMembership.setJoinedAt(Instant.now());
+            ownerMembership.setCreatedBy(savedWorkspace.getCreatedBy());
+            workspaceMembershipRepository.save(ownerMembership);
+        }
+
+        return savedWorkspace;
+    }
+
+    private ApprovalStatus resolveApprovalStatusByKind(WorkspaceKind kind) {
+        return switch (kind) {
+            case PRIVATE -> ApprovalStatus.APPROVED;
+            case GROUP -> ApprovalStatus.PENDING;
+        };
+    }
+
+    private WorkspaceStatus resolveWorkspaceStatusByKind(WorkspaceKind kind) {
+        return switch (kind) {
+            case PRIVATE -> WorkspaceStatus.ACTIVE;
+            case GROUP -> WorkspaceStatus.PENDING;
+        };
     }
 
     @Override
@@ -117,11 +159,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public Workspace setInactive(UUID workspaceId, UUID userId) {
-        Workspace workspace = getRequired(workspaceId, userId);
-        if(workspace == null || workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(userId))
-        {
-            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
-        }
+        Workspace workspace = getRequired(workspaceId);
+        assertWorkspacePrivilegedAccess(workspace, userId);
         workspace.setStatus(WorkspaceStatus.INACTIVE);
         return workspaceRepository.save(workspace);
     }
@@ -154,11 +193,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public void delete(UUID workspaceId, UUID userId) {
-        Workspace workspace = getRequired(workspaceId, userId);
-        if(workspace == null || workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(userId))
-        {
-            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
-        }
+        Workspace workspace = getRequired(workspaceId);
+        assertWorkspacePrivilegedAccess(workspace, userId);
+
         if (workspace.getDeletedAt() == null) {
             workspace.setDeletedAt(Instant.now());
         }
@@ -271,6 +308,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public WorkspaceInvitation respondToInvitation(UUID invitationId, String response, UUID userId) {
+
         WorkspaceInvitation invitation = workspaceInvitationRepository.findById(invitationId)
             .orElseThrow(() -> new EntityNotFoundException("Invitation not found: " + invitationId));
 
@@ -290,6 +328,18 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             invitation.setStatus(InvitationStatus.ACCEPTED);
             invitation.setAcceptedAt(Instant.now());
             invitation.setRejectedAt(null);
+
+            // Crear WorkspaceMembership automáticamente
+            WorkspaceMembership membership = new WorkspaceMembership();
+            membership.setWorkspace(invitation.getWorkspace());
+            membership.setUser(invitation.getInvitedUser());
+            membership.setRole(invitation.getRole());
+            membership.setStatus(MembershipStatus.ACTIVE);
+            membership.setJoinedAt(Instant.now());
+            membership.setInvitedAt(invitation.getCreatedAt());
+            membership.setCreatedBy(invitation.getInvitedBy());
+
+            workspaceMembershipRepository.save(membership);
         } else if ("REJECT".equalsIgnoreCase(response)) {
             invitation.setStatus(InvitationStatus.REJECTED);
             invitation.setRejectedAt(Instant.now());
@@ -299,6 +349,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
 
         return workspaceInvitationRepository.save(invitation);
+
     }
 
     // ========== RESTORATION ==========
@@ -315,13 +366,35 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public Workspace restoreWorkspace(UUID workspaceId, UUID userId) {
-        Workspace workspace = getRequired(workspaceId, userId);
-        if(workspace == null || workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(userId))
-        {
-            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
-        }
+        Workspace workspace = getRequired(workspaceId);
+        assertWorkspacePrivilegedAccess(workspace, userId);
         workspace.setDeletedAt(null);
         workspace.setStatus(WorkspaceStatus.ACTIVE);
         return workspaceRepository.save(workspace);
+    }
+
+    @Override
+    public List< Workspace > listPendingGroupApprovals() {
+        return workspaceRepository.findAll(
+            org.springframework.data.jpa.domain.Specification.allOf(
+                WorkspaceSpecifications.notDeleted(),
+                WorkspaceSpecifications.hasKind(com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind.GROUP),
+                WorkspaceSpecifications.hasApprovalStatus(ApprovalStatus.PENDING),
+                WorkspaceSpecifications.hasStatus(WorkspaceStatus.PENDING)
+            ),
+            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "name")
+        );
+    }
+
+    private void assertWorkspacePrivilegedAccess(Workspace workspace, UUID userId) {
+        boolean isCreator = workspace.getCreatedBy() != null && userId.equals(workspace.getCreatedBy().getId());
+        boolean hasPrivilegedMembership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId)
+            .filter(membership -> membership.getStatus() == MembershipStatus.ACTIVE)
+            .filter(membership -> membership.getRole() == WorkspaceRole.OWNER || membership.getRole() == WorkspaceRole.ADMIN)
+            .isPresent();
+
+        if (!isCreator && !hasPrivilegedMembership) {
+            throw new EntityNotFoundException("Workspace not found or access denied: " + workspace.getId());
+        }
     }
 }

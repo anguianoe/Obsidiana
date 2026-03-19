@@ -3,11 +3,16 @@ package com.nexcoyo.knowledge.obsidiana.service.impl;
 import com.nexcoyo.knowledge.obsidiana.entity.AppUser;
 import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceInvitation;
+import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceInvitationRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceMembershipRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceRepository;
 import com.nexcoyo.knowledge.obsidiana.util.enums.InvitationStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole;
+import com.nexcoyo.knowledge.obsidiana.util.enums.ApprovalStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind;
+import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.Optional;
@@ -16,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -24,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceImplTest {
@@ -184,6 +191,135 @@ class WorkspaceServiceImplTest {
         assertThatThrownBy(() -> service.respondToInvitation(invitationId, "MAYBE", invitedUserId))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported invitation response");
+    }
+
+    @Test
+    void saveCreatesOwnerMembershipForNewWorkspace() {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID workspaceId = UUID.randomUUID();
+
+        AppUser owner = user(ownerUserId, "owner@example.com");
+        Workspace workspace = new Workspace();
+        workspace.setCreatedBy(owner);
+        workspace.setKind(WorkspaceKind.PRIVATE);
+        workspace.setApprovalStatus(ApprovalStatus.REJECTED);
+
+        when(workspaceRepository.save(any(Workspace.class))).thenAnswer(invocation -> {
+            Workspace saved = invocation.getArgument(0);
+            saved.setId(workspaceId);
+            return saved;
+        });
+        when(workspaceMembershipRepository.save(any(WorkspaceMembership.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Workspace savedWorkspace = service.save(workspace);
+
+        assertThat(savedWorkspace.getId()).isEqualTo(workspaceId);
+        assertThat(savedWorkspace.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(savedWorkspace.getStatus()).isEqualTo(WorkspaceStatus.ACTIVE);
+
+        ArgumentCaptor<WorkspaceMembership> membershipCaptor = ArgumentCaptor.forClass(WorkspaceMembership.class);
+        verify(workspaceMembershipRepository).save(membershipCaptor.capture());
+
+        WorkspaceMembership savedMembership = membershipCaptor.getValue();
+        assertThat(savedMembership.getWorkspace()).isSameAs(savedWorkspace);
+        assertThat(savedMembership.getUser()).isSameAs(owner);
+        assertThat(savedMembership.getRole()).isEqualTo(WorkspaceRole.OWNER);
+        assertThat(savedMembership.getStatus()).isEqualTo(MembershipStatus.ACTIVE);
+        assertThat(savedMembership.getCreatedBy()).isSameAs(owner);
+        assertThat(savedMembership.getJoinedAt()).isNotNull();
+        assertThat(savedMembership.getInvitedAt()).isNull();
+    }
+
+    @Test
+    void saveDoesNotCreateOwnerMembershipForExistingWorkspace() {
+        UUID workspaceId = UUID.randomUUID();
+        AppUser owner = user(UUID.randomUUID(), "owner@example.com");
+        Workspace workspace = workspace(workspaceId, owner);
+        workspace.setKind(WorkspaceKind.GROUP);
+        workspace.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(workspaceRepository.save(any(Workspace.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Workspace savedWorkspace = service.save(workspace);
+
+        assertThat(savedWorkspace).isSameAs(workspace);
+        assertThat(savedWorkspace.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING);
+        assertThat(savedWorkspace.getStatus()).isEqualTo(WorkspaceStatus.PENDING);
+        verify(workspaceMembershipRepository, never()).save(any(WorkspaceMembership.class));
+    }
+
+    @Test
+    void saveRejectsWorkspaceWithoutKind() {
+        Workspace workspace = new Workspace();
+        workspace.setCreatedBy(user(UUID.randomUUID(), "owner@example.com"));
+
+        assertThatThrownBy(() -> service.save(workspace))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Workspace kind is required");
+
+        verify(workspaceRepository, never()).save(any(Workspace.class));
+        verify(workspaceMembershipRepository, never()).save(any(WorkspaceMembership.class));
+    }
+
+    @Test
+    void deleteAllowsCreator() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+
+        service.delete(workspaceId, creatorId);
+
+        assertThat(workspace.getStatus()).isEqualTo(WorkspaceStatus.ARCHIVED);
+        assertThat(workspace.getDeletedAt()).isNotNull();
+        verify(workspaceRepository).save(workspace);
+    }
+
+    @Test
+    void deleteAllowsActiveAdminMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID adminMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership membership = new WorkspaceMembership();
+        membership.setWorkspace(workspace);
+        membership.setUser(user(adminMemberId, "admin@example.com"));
+        membership.setStatus(MembershipStatus.ACTIVE);
+        membership.setRole(WorkspaceRole.ADMIN);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, adminMemberId)).thenReturn(Optional.of(membership));
+
+        service.delete(workspaceId, adminMemberId);
+
+        assertThat(workspace.getStatus()).isEqualTo(WorkspaceStatus.ARCHIVED);
+        assertThat(workspace.getDeletedAt()).isNotNull();
+        verify(workspaceRepository).save(workspace);
+    }
+
+    @Test
+    void deleteRejectsNonPrivilegedMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID editorMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership membership = new WorkspaceMembership();
+        membership.setWorkspace(workspace);
+        membership.setUser(user(editorMemberId, "editor@example.com"));
+        membership.setStatus(MembershipStatus.ACTIVE);
+        membership.setRole(WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, editorMemberId)).thenReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> service.delete(workspaceId, editorMemberId))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+
+        verify(workspaceRepository, never()).save(any(Workspace.class));
     }
 
     private static AppUser user(UUID id, String email) {

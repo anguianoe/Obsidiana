@@ -6,10 +6,12 @@ import java.util.UUID;
 
 import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
 import com.nexcoyo.knowledge.obsidiana.projection.WorkspaceSummaryProjection;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.lang.NonNull;
 
 public interface WorkspaceRepository extends JpaRepository<Workspace, UUID>, JpaSpecificationExecutor< Workspace > {
 
@@ -17,6 +19,11 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, UUID>, Jpa
 
     boolean existsBySlug(String slug);
 
+    @EntityGraph(attributePaths = {"createdBy", "approvedBy"})
+    @NonNull
+    Optional<Workspace> findById(@NonNull UUID id);
+
+    @EntityGraph(attributePaths = {"createdBy", "approvedBy"})
     Optional<Workspace> findByIdAndCreatedById(UUID workspaceId, UUID userId);
 
     @Query("""

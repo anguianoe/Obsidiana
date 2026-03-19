@@ -1,7 +1,9 @@
 package com.nexcoyo.knowledge.obsidiana.repository;
 
-import java.util.UUID;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.nexcoyo.knowledge.obsidiana.entity.UserProfile;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -13,4 +15,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, UUID>,
 
     @EntityGraph(attributePaths = {"user", "avatarAsset"})
     Optional<UserProfile> findDetailedByUserId(UUID userId);
+
+    @EntityGraph(attributePaths = {"avatarAsset"})
+    List<UserProfile> findAllByUserIdIn(Collection<UUID> userIds);
 }

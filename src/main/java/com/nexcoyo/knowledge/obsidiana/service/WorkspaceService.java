@@ -43,4 +43,7 @@ public interface WorkspaceService {
     // ========== RESTORATION ==========
     Workspace restoreWorkspace(UUID workspaceId);
     Workspace restoreWorkspace(UUID workspaceId, UUID userId);
+
+    // ========== ADMIN PENDING APPROVAL WORKSPACE LIST ==========
+    List< Workspace > listPendingGroupApprovals();
 }

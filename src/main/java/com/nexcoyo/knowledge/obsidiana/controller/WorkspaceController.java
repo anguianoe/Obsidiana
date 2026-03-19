@@ -52,22 +52,21 @@ public class WorkspaceController {
     public WorkspaceResponse adminUpdate(@PathVariable UUID workspaceId, @Valid @RequestBody WorkspaceUpsertRequest request) {
         UUID userId = generalService.getIdUserFromSession();
         return workspaceFacade.save(new WorkspaceUpsertRequest(
-                workspaceId, request.name(), request.slug(), request.kind(), request.status(),
-                request.approvalStatus(), request.createdBy(), request.approvedBy(), request.description()
-        ), userId, false);
+                workspaceId, request.name(), request.slug(), request.kind(), request.description()
+        ), userId, true);
     }
 
     @PutMapping("/{workspaceId}")
     public WorkspaceResponse update(@PathVariable UUID workspaceId, @Valid @RequestBody WorkspaceUpsertRequest request) {
         UUID userId = generalService.getIdUserFromSession();
         return workspaceFacade.save(new WorkspaceUpsertRequest(
-            workspaceId, request.name(), request.slug(), request.kind(), request.status(),
-            request.approvalStatus(), request.createdBy(), request.approvedBy(), request.description()
-        ), userId,true);
+            workspaceId, request.name(), request.slug(), request.kind(), request.description()
+        ), userId,false);
     }
 
-    @GetMapping("/accessible/{userId}")
-    public List< WorkspaceSummaryResponse > accessible( @PathVariable UUID userId) {
+    @GetMapping("/accessible")
+    public List< WorkspaceSummaryResponse > accessible( ) {
+        UUID userId = generalService.getIdUserFromSession();
         return workspaceFacade.accessible(userId);
     }
 
@@ -127,6 +126,7 @@ public class WorkspaceController {
 
     @GetMapping("/{workspaceId}/invitations/pending")
     public List< WorkspaceInvitationResponse > pendingInvitations( @PathVariable UUID workspaceId) {
+        //TODO: Agregar validacion por userId para verificar que el usuario tenga permisos para ver las invitaciones del workspace
         return workspaceFacade.pendingInvitations(workspaceId);
     }
 
@@ -148,8 +148,6 @@ public class WorkspaceController {
     ) {
         return workspaceFacade.updateApprovalStatus(workspaceId, request);
     }
-
-    // ========== GESTIÓN DE MIEMBROS ==========
 
     @PostMapping("/{workspaceId}/members")
     public WorkspaceInvitationResponse inviteMember(
@@ -207,26 +205,20 @@ public class WorkspaceController {
         workspaceFacade.removeMember(workspaceId, memberId, userId, true);
     }
 
-
-    // ========== GESTIÓN DE INVITACIONES ==========
-
     @GetMapping("/my-invitations")
     public List< WorkspaceInvitationResponse > myInvitations() {
         UUID userId = generalService.getIdUserFromSession();
         return workspaceFacade.myInvitations(  userId);
     }
 
-    @PatchMapping("/{workspaceId}/invitations/{invitationId}/respond")
+    @PatchMapping("/invitations/{invitationId}/respond")
     public WorkspaceInvitationResponse respondToInvitation(
-        @PathVariable UUID workspaceId,
         @PathVariable UUID invitationId,
         @Valid @RequestBody RespondInvitationRequest request
     ) {
         UUID userId = generalService.getIdUserFromSession();
         return workspaceFacade.respondToInvitation(invitationId, request.response(), userId);
     }
-
-    // ========== RESTAURACIÓN DE WORKSPACE ==========
 
     @PatchMapping("/admin/{workspaceId}/restore")
     public WorkspaceResponse adminRestore(
@@ -243,4 +235,8 @@ public class WorkspaceController {
         return workspaceFacade.restoreWorkspace(workspaceId, userId);
     }
 
+    @GetMapping("/admin/pending-approvals")
+    public List< WorkspaceResponse > pendingApprovals() {
+        return workspaceFacade.pendingGroupApprovals();
+    }
 }
