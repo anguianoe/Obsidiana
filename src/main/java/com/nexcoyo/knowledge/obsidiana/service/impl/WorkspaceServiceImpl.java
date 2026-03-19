@@ -6,6 +6,7 @@ import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceInvitation;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
 import com.nexcoyo.knowledge.obsidiana.projection.WorkspaceSummaryProjection;
+import com.nexcoyo.knowledge.obsidiana.repository.AppUserRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceInvitationRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceMembershipRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceRepository;
@@ -18,6 +19,7 @@ import com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.SystemRole;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
@@ -41,6 +43,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMembershipRepository workspaceMembershipRepository;
     private final WorkspaceInvitationRepository workspaceInvitationRepository;
+    private final AppUserRepository appUserRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -121,20 +124,38 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public List< WorkspaceMembership > getActiveMembers( UUID workspaceId, UUID userId) {
-        Workspace workspace = getRequired(workspaceId, userId);
-        if(workspace == null)
-        {
-            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
-        }
+        getRequiredForRead(workspaceId, userId);
         return workspaceMembershipRepository.findAllByWorkspaceIdAndStatus(workspaceId, MembershipStatus.ACTIVE);
     }
 
-
-
-
+    @Override
+    public Workspace getRequiredForRead(UUID workspaceId, UUID userId) {
+        Workspace workspace = getRequired(workspaceId);
+        assertWorkspaceReadAccess(workspace, userId);
+        return workspace;
+    }
 
     @Override
-    public List< WorkspaceInvitation > getPendingInvitations( UUID workspaceId) {
+    public Workspace getRequiredForWrite(UUID workspaceId, UUID userId) {
+        Workspace workspace = getRequired(workspaceId);
+        assertWorkspaceWriteAccess(workspace, userId);
+        return workspace;
+    }
+
+    @Override
+    public Page< Workspace > searchRelatedByUser(UUID userId, String text, WorkspaceStatus status, Pageable pageable) {
+        if (isSuperAdmin(userId)) {
+            WorkspaceSearchCriteria criteria = new WorkspaceSearchCriteria();
+            criteria.setNameOrSlug(text);
+            criteria.setStatus(status);
+            return workspaceRepository.findAll(WorkspaceSpecifications.byCriteria(criteria), pageable);
+        }
+        return workspaceRepository.findAll(WorkspaceSpecifications.byRelatedUser(userId, text, status), pageable);
+    }
+
+    @Override
+    public List< WorkspaceInvitation > getPendingInvitations( UUID workspaceId, UUID userId) {
+        getRequiredForRead(workspaceId, userId);
         return workspaceInvitationRepository.findAllByWorkspaceIdAndStatus(workspaceId, InvitationStatus.PENDING);
     }
 
@@ -194,7 +215,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void delete(UUID workspaceId, UUID userId) {
         Workspace workspace = getRequired(workspaceId);
-        assertWorkspacePrivilegedAccess(workspace, userId);
+        assertActiveOwnerOrAdminMembership(workspace, userId);
 
         if (workspace.getDeletedAt() == null) {
             workspace.setDeletedAt(Instant.now());
@@ -208,16 +229,22 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     @Transactional
     public WorkspaceInvitation inviteMember( UUID workspaceId, UUID userId, WorkspaceRole role, UUID actorUserId, Boolean isAdmin) {
-        Workspace workspace;
-        if (Boolean.TRUE.equals(isAdmin)) {
-            workspace = getRequired(workspaceId);
-        } else {
-            workspace = getRequired(workspaceId, actorUserId);
-        }
+        Workspace workspace = getRequired(workspaceId);
 
-        if (!Boolean.TRUE.equals(isAdmin)
-            && (workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(actorUserId))) {
-            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
+        if (!Boolean.TRUE.equals(isAdmin)) {
+            // Workspace must be ACTIVE and GROUP to allow invitations from regular users
+            if (workspace.getStatus() != WorkspaceStatus.ACTIVE) {
+                throw new IllegalStateException("Workspace is not active: " + workspaceId);
+            }
+            if (workspace.getKind() != WorkspaceKind.GROUP) {
+                throw new IllegalStateException("Invitations are only allowed for GROUP workspaces: " + workspaceId);
+            }
+
+            // Actor must have ACTIVE membership with OWNER or ADMIN role
+            workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, actorUserId)
+                .filter(m -> m.getStatus() == MembershipStatus.ACTIVE)
+                .filter(m -> m.getRole() == WorkspaceRole.OWNER || m.getRole() == WorkspaceRole.ADMIN)
+                .orElseThrow(() -> new EntityNotFoundException("Workspace not found or access denied: " + workspaceId));
         }
 
         AppUser invitedUser = entityManager.getReference(AppUser.class, userId);
@@ -252,20 +279,36 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public WorkspaceMembership updateMemberRole(UUID workspaceId, UUID memberId, String role, UUID actorUserId, boolean isAdmin) {
         WorkspaceMembership membership;
-        if( isAdmin ){
+        if (isAdmin) {
             membership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, memberId)
-                                                      .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
-        }
-        else {
-            Workspace workspace = getRequired(workspaceId, actorUserId);
-            if(workspace == null || workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(actorUserId))
-            {
+                .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
+        } else {
+            Workspace workspace = getRequired(workspaceId);
+
+            // Actor must be createdBy or have ACTIVE membership with OWNER or ADMIN role
+            boolean isCreator = workspace.getCreatedBy() != null && actorUserId.equals(workspace.getCreatedBy().getId());
+            WorkspaceMembership actorMembership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, actorUserId)
+                .orElse(null);
+            boolean hasPrivilegedRole = actorMembership != null
+                && actorMembership.getStatus() == MembershipStatus.ACTIVE
+                && (actorMembership.getRole() == WorkspaceRole.OWNER || actorMembership.getRole() == WorkspaceRole.ADMIN);
+
+            if (!isCreator && !hasPrivilegedRole) {
                 throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
             }
+
+            // ADMIN (non-owner/createdBy) cannot update their own role
+            boolean actorIsAdminOnly = !isCreator
+                && actorMembership != null
+                && actorMembership.getRole() == WorkspaceRole.ADMIN;
+            if (actorIsAdminOnly && actorUserId.equals(memberId)) {
+                throw new IllegalStateException("ADMIN cannot update their own role");
+            }
+
             membership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, memberId)
-                    .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
+                .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
         }
-        membership.setRole(com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole.valueOf(role.toUpperCase()));
+        membership.setRole(WorkspaceRole.valueOf(role.toUpperCase()));
         membership.setUpdatedAt(Instant.now());
 
         return workspaceMembershipRepository.save(membership);
@@ -281,11 +324,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                                                       .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
         }
         else {
-            Workspace workspace = getRequired(workspaceId, actorUserId);
-            if(workspace == null || workspace.getCreatedBy() == null || !workspace.getCreatedBy().getId().equals(actorUserId))
-            {
-                throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
-            }
+            Workspace workspace = getRequired(workspaceId);
+            assertActiveOwnerOrAdminMembership(workspace, actorUserId);
             membership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, memberId)
                                                       .orElseThrow(() -> new EntityNotFoundException("Membership not found: workspace=" + workspaceId + ", user=" + memberId));
         }
@@ -396,5 +436,54 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         if (!isCreator && !hasPrivilegedMembership) {
             throw new EntityNotFoundException("Workspace not found or access denied: " + workspace.getId());
         }
+    }
+
+    private void assertActiveOwnerOrAdminMembership(Workspace workspace, UUID userId) {
+        boolean hasPrivilegedMembership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId)
+            .filter(membership -> membership.getStatus() == MembershipStatus.ACTIVE)
+            .filter(membership -> membership.getRole() == WorkspaceRole.OWNER || membership.getRole() == WorkspaceRole.ADMIN)
+            .isPresent();
+
+        if (!hasPrivilegedMembership) {
+            throw new EntityNotFoundException("Workspace not found or access denied: " + workspace.getId());
+        }
+    }
+
+    private void assertWorkspaceWriteAccess(Workspace workspace, UUID userId) {
+        boolean isCreator = workspace.getCreatedBy() != null && userId.equals(workspace.getCreatedBy().getId());
+        boolean hasWritableMembership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId)
+            .filter(membership -> membership.getStatus() == MembershipStatus.ACTIVE)
+            .filter(membership -> membership.getRole() != null && membership.getRole() != WorkspaceRole.VIEWER)
+            .isPresent();
+
+        if (!isCreator && !hasWritableMembership) {
+            throw new EntityNotFoundException("Workspace not found or access denied: " + workspace.getId());
+        }
+    }
+
+    private void assertWorkspaceReadAccess(Workspace workspace, UUID userId) {
+        if (isSuperAdmin(userId)) {
+            return;
+        }
+
+        boolean isCreator = workspace.getCreatedBy() != null && userId.equals(workspace.getCreatedBy().getId());
+        boolean hasReadableMembership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId)
+            .filter(membership -> membership.getStatus() == MembershipStatus.ACTIVE)
+            .filter(membership -> membership.getRole() == WorkspaceRole.ADMIN)
+            .isPresent();
+
+        if (!isCreator && !hasReadableMembership) {
+            throw new EntityNotFoundException("Workspace not found or access denied: " + workspace.getId());
+        }
+    }
+
+    private boolean isSuperAdmin(UUID userId) {
+        if (userId == null) {
+            return false;
+        }
+        return appUserRepository.findById(userId)
+            .map(AppUser::getSystemRole)
+            .filter(role -> role == SystemRole.SUPER_ADMIN)
+            .isPresent();
     }
 }

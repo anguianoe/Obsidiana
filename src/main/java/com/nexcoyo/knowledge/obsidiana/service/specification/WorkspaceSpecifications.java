@@ -85,4 +85,33 @@ public final class WorkspaceSpecifications {
             return cb.exists(sq);
         };
     }
+
+    public static Specification< Workspace > byRelatedUser(UUID userId, String nameOrSlug, WorkspaceStatus status) {
+        return Specification.allOf(
+            notDeleted(),
+            relatedUser(userId),
+            likeNameOrSlug(nameOrSlug),
+            hasStatus(status)
+        );
+    }
+
+    public static Specification<Workspace> relatedUser(UUID userId) {
+        return (root, query, cb) -> {
+            if (userId == null) return null;
+
+            var creatorPredicate = cb.equal(root.get("createdBy").get("id"), userId);
+
+            var sq = query.subquery(UUID.class);
+            var membership = sq.from(WorkspaceMembership.class);
+            sq.select(membership.get("workspace").get("id"));
+            sq.where(
+                cb.equal(membership.get("workspace").get("id"), root.get("id")),
+                cb.equal(membership.get("user").get("id"), userId),
+                cb.equal(membership.get("status"), com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus.ACTIVE),
+                cb.equal(membership.get("role"), com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole.ADMIN)
+            );
+
+            return cb.or(creatorPredicate, cb.exists(sq));
+        };
+    }
 }

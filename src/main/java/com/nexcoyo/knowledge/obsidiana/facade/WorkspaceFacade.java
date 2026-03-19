@@ -49,7 +49,7 @@ public class WorkspaceFacade {
     }
 
     public WorkspaceResponse getById(UUID id, UUID createdBy) {
-        return toEnrichedResponse(workspaceService.getRequired(id, createdBy));
+        return toEnrichedResponse(workspaceService.getRequiredForRead(id, createdBy));
     }
 
     public WorkspaceResponse adminGetById(UUID id) {
@@ -59,9 +59,11 @@ public class WorkspaceFacade {
     public WorkspaceResponse save( WorkspaceUpsertRequest request, UUID createdBy, Boolean isAdmin) {
 
         Instant now = Instant.now();
-        Workspace entity = request.id() == null ? new Workspace() : workspaceService.getRequired(request.id(), createdBy);
+        Workspace entity;
         if (Boolean.TRUE.equals(isAdmin)) {
             entity = request.id() == null ? new Workspace() : workspaceService.getRequired(request.id());
+        } else {
+            entity = request.id() == null ? new Workspace() : workspaceService.getRequiredForWrite(request.id(), createdBy);
         }
 
         entity.setName(request.name());
@@ -83,9 +85,7 @@ public class WorkspaceFacade {
         Workspace saved = workspaceService.save(entity);
 
         // Reload to ensure lazy associations used in response mapping are initialized.
-        Workspace reloaded = Boolean.TRUE.equals(isAdmin)
-            ? workspaceService.getRequired(saved.getId())
-            : workspaceService.getRequired(saved.getId(), createdBy);
+        Workspace reloaded = workspaceService.getRequired(saved.getId());
 
         return toEnrichedResponse(reloaded);
     }
@@ -102,8 +102,8 @@ public class WorkspaceFacade {
         return toMembershipResponses(workspaceService.getActiveMembers(workspaceId, userId));
     }
 
-    public List< WorkspaceInvitationResponse > pendingInvitations( UUID workspaceId) {
-        return workspaceService.getPendingInvitations(workspaceId).stream().map(ApiMapper::toResponse).toList();
+    public List< WorkspaceInvitationResponse > pendingInvitations( UUID workspaceId, UUID userId) {
+        return workspaceService.getPendingInvitations(workspaceId, userId).stream().map(ApiMapper::toResponse).toList();
     }
 
     public void delete(UUID workspaceId) {
@@ -120,8 +120,8 @@ public class WorkspaceFacade {
     }
 
     public PageResponse< WorkspaceResponse > searchByCreatedBy(UUID createdBy, String text, WorkspaceStatus status, Pageable pageable) {
-        Page<Workspace> page = workspaceService.searchByCreatedBy(createdBy, text, status, pageable);
-        return toEnrichedPage(page, workspaceId -> workspaceService.getRequired(workspaceId, createdBy));
+        Page<Workspace> page = workspaceService.searchRelatedByUser(createdBy, text, status, pageable);
+        return toEnrichedPage(page, workspaceId -> workspaceService.getRequiredForRead(workspaceId, createdBy));
     }
 
     public List< WorkspaceResponse > pendingGroupApprovals() {

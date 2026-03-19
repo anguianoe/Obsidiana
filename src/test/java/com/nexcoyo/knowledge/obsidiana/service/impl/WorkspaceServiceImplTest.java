@@ -4,6 +4,7 @@ import com.nexcoyo.knowledge.obsidiana.entity.AppUser;
 import com.nexcoyo.knowledge.obsidiana.entity.Workspace;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceInvitation;
 import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
+import com.nexcoyo.knowledge.obsidiana.repository.AppUserRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceInvitationRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceMembershipRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceRepository;
@@ -13,6 +14,7 @@ import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceRole;
 import com.nexcoyo.knowledge.obsidiana.util.enums.ApprovalStatus;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind;
 import com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.SystemRole;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.Optional;
@@ -43,12 +45,14 @@ class WorkspaceServiceImplTest {
     private WorkspaceInvitationRepository workspaceInvitationRepository;
     @Mock
     private EntityManager entityManager;
+    @Mock
+    private AppUserRepository appUserRepository;
 
     private WorkspaceServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new WorkspaceServiceImpl(workspaceRepository, workspaceMembershipRepository, workspaceInvitationRepository);
+        service = new WorkspaceServiceImpl(workspaceRepository, workspaceMembershipRepository, workspaceInvitationRepository, appUserRepository);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
     }
 
@@ -92,9 +96,14 @@ class WorkspaceServiceImplTest {
 
         AppUser actor = user(actorUserId, "owner@example.com");
         AppUser invitedUser = user(invitedUserId, "invitee@example.com");
-        Workspace workspace = workspace(workspaceId, actor);
+        Workspace workspace = workspace(workspaceId, user(UUID.randomUUID(), "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ACTIVE);
+        workspace.setKind(WorkspaceKind.GROUP);
 
-        when(workspaceRepository.findByIdAndCreatedById(workspaceId, actorUserId)).thenReturn(Optional.of(workspace));
+        WorkspaceMembership actorMembership = membership(workspace, actor, MembershipStatus.ACTIVE, WorkspaceRole.OWNER);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, actorUserId)).thenReturn(Optional.of(actorMembership));
         when(entityManager.getReference(AppUser.class, invitedUserId)).thenReturn(invitedUser);
         when(entityManager.getReference(AppUser.class, actorUserId)).thenReturn(actor);
         when(workspaceInvitationRepository.findByWorkspaceIdAndInvitedUser(workspaceId, invitedUser)).thenReturn(Optional.empty());
@@ -102,7 +111,67 @@ class WorkspaceServiceImplTest {
 
         service.inviteMember(workspaceId, invitedUserId, WorkspaceRole.VIEWER, actorUserId, false);
 
-        verify(workspaceRepository).findByIdAndCreatedById(workspaceId, actorUserId);
+        verify(workspaceMembershipRepository).findByWorkspaceIdAndUserId(workspaceId, actorUserId);
+    }
+
+    @Test
+    void inviteMemberRejectsNonAdminMemberActor() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID invitedUserId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(UUID.randomUUID(), "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ACTIVE);
+        workspace.setKind(WorkspaceKind.GROUP);
+
+        WorkspaceMembership actorMembership = membership(workspace, user(actorUserId, "editor@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, actorUserId)).thenReturn(Optional.of(actorMembership));
+
+        assertThatThrownBy(() -> service.inviteMember(workspaceId, invitedUserId, WorkspaceRole.VIEWER, actorUserId, false))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+
+        verify(workspaceInvitationRepository, never()).save(any());
+    }
+
+    @Test
+    void inviteMemberRejectsPrivateWorkspace() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(UUID.randomUUID(), "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ACTIVE);
+        workspace.setKind(WorkspaceKind.PRIVATE);
+
+        WorkspaceMembership actorMembership = membership(workspace, user(actorUserId, "admin@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.ADMIN);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+
+        assertThatThrownBy(() -> service.inviteMember(workspaceId, UUID.randomUUID(), WorkspaceRole.VIEWER, actorUserId, false))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("GROUP workspaces");
+
+        verify(workspaceInvitationRepository, never()).save(any());
+    }
+
+    @Test
+    void inviteMemberRejectsInactiveWorkspace() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(UUID.randomUUID(), "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.INACTIVE);
+        workspace.setKind(WorkspaceKind.GROUP);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+
+        assertThatThrownBy(() -> service.inviteMember(workspaceId, UUID.randomUUID(), WorkspaceRole.VIEWER, actorUserId, false))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("not active");
+
+        verify(workspaceInvitationRepository, never()).save(any());
     }
 
     @Test
@@ -267,7 +336,10 @@ class WorkspaceServiceImplTest {
         UUID creatorId = UUID.randomUUID();
 
         Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership membership = membership(workspace, user(creatorId, "creator@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.OWNER);
+
         when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, creatorId)).thenReturn(Optional.of(membership));
 
         service.delete(workspaceId, creatorId);
 
@@ -300,6 +372,25 @@ class WorkspaceServiceImplTest {
     }
 
     @Test
+    void deleteAllowsActiveOwnerMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID ownerUserId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership membership = membership(workspace, user(ownerUserId, "owner@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.OWNER);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, ownerUserId)).thenReturn(Optional.of(membership));
+
+        service.delete(workspaceId, ownerUserId);
+
+        assertThat(workspace.getStatus()).isEqualTo(WorkspaceStatus.ARCHIVED);
+        assertThat(workspace.getDeletedAt()).isNotNull();
+        verify(workspaceRepository).save(workspace);
+    }
+
+    @Test
     void deleteRejectsNonPrivilegedMembership() {
         UUID workspaceId = UUID.randomUUID();
         UUID creatorId = UUID.randomUUID();
@@ -320,6 +411,273 @@ class WorkspaceServiceImplTest {
             .hasMessageContaining("access denied");
 
         verify(workspaceRepository, never()).save(any(Workspace.class));
+    }
+
+    @Test
+    void getActiveMembersAllowsActiveMembershipWithRole() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership readerMembership = new WorkspaceMembership();
+        readerMembership.setWorkspace(workspace);
+        readerMembership.setUser(user(memberId, "member@example.com"));
+        readerMembership.setStatus(MembershipStatus.ACTIVE);
+        readerMembership.setRole(WorkspaceRole.ADMIN);
+
+        WorkspaceMembership listedMembership = new WorkspaceMembership();
+        listedMembership.setWorkspace(workspace);
+        listedMembership.setUser(user(UUID.randomUUID(), "other@example.com"));
+        listedMembership.setStatus(MembershipStatus.ACTIVE);
+        listedMembership.setRole(WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, memberId)).thenReturn(Optional.of(readerMembership));
+        when(workspaceMembershipRepository.findAllByWorkspaceIdAndStatus(workspaceId, MembershipStatus.ACTIVE))
+            .thenReturn(java.util.List.of(listedMembership));
+
+        var result = service.getActiveMembers(workspaceId, memberId);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void getActiveMembersAllowsSuperAdminWithoutMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID superAdminId = UUID.randomUUID();
+
+        AppUser superAdmin = user(superAdminId, "superadmin@example.com");
+        superAdmin.setSystemRole(SystemRole.SUPER_ADMIN);
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership listedMembership = new WorkspaceMembership();
+        listedMembership.setWorkspace(workspace);
+        listedMembership.setUser(user(UUID.randomUUID(), "other@example.com"));
+        listedMembership.setStatus(MembershipStatus.ACTIVE);
+        listedMembership.setRole(WorkspaceRole.EDITOR);
+
+        when(appUserRepository.findById(superAdminId)).thenReturn(Optional.of(superAdmin));
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findAllByWorkspaceIdAndStatus(workspaceId, MembershipStatus.ACTIVE))
+            .thenReturn(java.util.List.of(listedMembership));
+
+        var result = service.getActiveMembers(workspaceId, superAdminId);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void getActiveMembersRejectsInactiveMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership readerMembership = new WorkspaceMembership();
+        readerMembership.setWorkspace(workspace);
+        readerMembership.setUser(user(memberId, "member@example.com"));
+        readerMembership.setStatus(MembershipStatus.REMOVED);
+        readerMembership.setRole(WorkspaceRole.VIEWER);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, memberId)).thenReturn(Optional.of(readerMembership));
+
+        assertThatThrownBy(() -> service.getActiveMembers(workspaceId, memberId))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+    }
+
+    @Test
+    void updateMemberRoleAllowsCreator() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID targetMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership targetMembership = membership(workspace, user(targetMemberId, "target@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        // actor is createdBy — actor membership lookup returns empty (not a member record needed)
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, creatorId)).thenReturn(Optional.empty());
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, targetMemberId)).thenReturn(Optional.of(targetMembership));
+        when(workspaceMembershipRepository.save(any(WorkspaceMembership.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        WorkspaceMembership result = service.updateMemberRole(workspaceId, targetMemberId, "VIEWER", creatorId, false);
+
+        assertThat(result.getRole()).isEqualTo(WorkspaceRole.VIEWER);
+    }
+
+    @Test
+    void updateMemberRoleAllowsOwnerMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID targetMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership actorMembership = membership(workspace, user(ownerId, "owner@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.OWNER);
+        WorkspaceMembership targetMembership = membership(workspace, user(targetMemberId, "target@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, ownerId)).thenReturn(Optional.of(actorMembership));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, targetMemberId)).thenReturn(Optional.of(targetMembership));
+        when(workspaceMembershipRepository.save(any(WorkspaceMembership.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        WorkspaceMembership result = service.updateMemberRole(workspaceId, targetMemberId, "VIEWER", ownerId, false);
+
+        assertThat(result.getRole()).isEqualTo(WorkspaceRole.VIEWER);
+    }
+
+    @Test
+    void updateMemberRoleAllowsAdminMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+        UUID targetMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership actorMembership = membership(workspace, user(adminId, "admin@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.ADMIN);
+        WorkspaceMembership targetMembership = membership(workspace, user(targetMemberId, "target@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, adminId)).thenReturn(Optional.of(actorMembership));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, targetMemberId)).thenReturn(Optional.of(targetMembership));
+        when(workspaceMembershipRepository.save(any(WorkspaceMembership.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        WorkspaceMembership result = service.updateMemberRole(workspaceId, targetMemberId, "VIEWER", adminId, false);
+
+        assertThat(result.getRole()).isEqualTo(WorkspaceRole.VIEWER);
+    }
+
+    @Test
+    void updateMemberRoleRejectsAdminUpdatingSelf() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership actorMembership = membership(workspace, user(adminId, "admin@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.ADMIN);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, adminId)).thenReturn(Optional.of(actorMembership));
+
+        assertThatThrownBy(() -> service.updateMemberRole(workspaceId, adminId, "EDITOR", adminId, false))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("ADMIN cannot update their own role");
+
+        verify(workspaceMembershipRepository, never()).save(any(WorkspaceMembership.class));
+    }
+
+    @Test
+    void updateMemberRoleRejectsEditorActor() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID editorId = UUID.randomUUID();
+        UUID targetMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        WorkspaceMembership actorMembership = membership(workspace, user(editorId, "editor@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, editorId)).thenReturn(Optional.of(actorMembership));
+
+        assertThatThrownBy(() -> service.updateMemberRole(workspaceId, targetMemberId, "VIEWER", editorId, false))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+
+        verify(workspaceMembershipRepository, never()).save(any(WorkspaceMembership.class));
+    }
+
+    @Test
+    void setInactiveAllowsActiveOwnerMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID ownerMemberId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ACTIVE);
+
+        WorkspaceMembership membership = membership(workspace, user(ownerMemberId, "owner@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.OWNER);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, ownerMemberId)).thenReturn(Optional.of(membership));
+        when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Workspace result = service.setInactive(workspaceId, ownerMemberId);
+
+        assertThat(result.getStatus()).isEqualTo(WorkspaceStatus.INACTIVE);
+    }
+
+    @Test
+    void setInactiveRejectsEditorMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID editorId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ACTIVE);
+
+        WorkspaceMembership membership = membership(workspace, user(editorId, "editor@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, editorId)).thenReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> service.setInactive(workspaceId, editorId))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+    }
+
+    @Test
+    void restoreAllowsActiveAdminMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ARCHIVED);
+        workspace.setDeletedAt(Instant.now());
+
+        WorkspaceMembership membership = membership(workspace, user(adminId, "admin@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.ADMIN);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, adminId)).thenReturn(Optional.of(membership));
+        when(workspaceRepository.save(any(Workspace.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Workspace result = service.restoreWorkspace(workspaceId, adminId);
+
+        assertThat(result.getStatus()).isEqualTo(WorkspaceStatus.ACTIVE);
+        assertThat(result.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void restoreRejectsNonPrivilegedMembership() {
+        UUID workspaceId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        UUID editorId = UUID.randomUUID();
+
+        Workspace workspace = workspace(workspaceId, user(creatorId, "creator@example.com"));
+        workspace.setStatus(WorkspaceStatus.ARCHIVED);
+        workspace.setDeletedAt(Instant.now());
+
+        WorkspaceMembership membership = membership(workspace, user(editorId, "editor@example.com"), MembershipStatus.ACTIVE, WorkspaceRole.EDITOR);
+
+        when(workspaceRepository.findById(workspaceId)).thenReturn(Optional.of(workspace));
+        when(workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, editorId)).thenReturn(Optional.of(membership));
+
+        assertThatThrownBy(() -> service.restoreWorkspace(workspaceId, editorId))
+            .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+            .hasMessageContaining("access denied");
+    }
+
+    private static WorkspaceMembership membership(Workspace workspace, AppUser user, MembershipStatus status, WorkspaceRole role) {
+        WorkspaceMembership m = new WorkspaceMembership();
+        m.setWorkspace(workspace);
+        m.setUser(user);
+        m.setStatus(status);
+        m.setRole(role);
+        return m;
     }
 
     private static AppUser user(UUID id, String email) {

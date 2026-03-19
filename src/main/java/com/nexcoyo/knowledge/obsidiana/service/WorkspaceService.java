@@ -21,13 +21,15 @@ public interface WorkspaceService {
     List< WorkspaceSummaryProjection > findAccessibleSummaries(UUID userId);
     Workspace getRequired(UUID workspaceId);
     Workspace getRequired(UUID workspaceId, UUID userId);
+    Workspace getRequiredForRead(UUID workspaceId, UUID userId);
+    Workspace getRequiredForWrite(UUID workspaceId, UUID userId);
     Workspace save(Workspace workspace);
     Workspace setInactive(UUID workspaceId);
     Workspace setInactive(UUID workspaceId, UUID userId);
     Workspace updateApprovalStatus(UUID workspaceId, ApprovalStatus approvalStatus, UUID approvedBy);
     List< WorkspaceMembership > getActiveMembers(UUID workspaceId);
     List< WorkspaceMembership > getActiveMembers(UUID workspaceId, UUID userId);
-    List< WorkspaceInvitation > getPendingInvitations(UUID workspaceId);
+    List< WorkspaceInvitation > getPendingInvitations(UUID workspaceId, UUID userId);
     void delete(UUID workspaceId);
     void delete(UUID workspaceId, UUID userId);
 
@@ -46,4 +48,5 @@ public interface WorkspaceService {
 
     // ========== ADMIN PENDING APPROVAL WORKSPACE LIST ==========
     List< Workspace > listPendingGroupApprovals();
+    Page< Workspace > searchRelatedByUser(UUID userId, String text, WorkspaceStatus status, Pageable pageable);
 }
