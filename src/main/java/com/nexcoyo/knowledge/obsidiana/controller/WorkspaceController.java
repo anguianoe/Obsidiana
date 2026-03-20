@@ -17,11 +17,18 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Controlador para operaciones de Workspace a nivel de usuario.
+ * Todos los endpoints requieren autenticación con rol USER.
+ * La validación específica de cada workspace ocurre en la capa de fachada.
+ */
 @RestController
 @RequestMapping("/api/v1/workspaces")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('USER')")
 public class WorkspaceController {
 
     private final WorkspaceFacade workspaceFacade;

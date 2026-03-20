@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,9 +31,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Controlador para operaciones administrativas de Workspace.
+ * Todos los endpoints requieren autenticación con rol SUPER_ADMIN.
+ * Sin restricciones adicionales a nivel de workspace.
+ */
 @RestController
 @RequestMapping("/api/v1/admin/workspaces")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class WorkspaceAdminController
 {
     private final WorkspaceFacade workspaceFacade;
