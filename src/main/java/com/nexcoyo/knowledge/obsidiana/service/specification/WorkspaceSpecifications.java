@@ -24,6 +24,7 @@ public final class WorkspaceSpecifications {
             hasKind(criteria.getKind()),
             hasStatus(criteria.getStatus()),
             hasApprovalStatus(criteria.getApprovalStatus()),
+            createdBy(criteria.getCreatedBy()),
             createdBy(criteria.getOnlyOwned() != null && criteria.getOnlyOwned() ? criteria.getUserId() : null),
             memberUser(criteria.getOnlyMember() != null && criteria.getOnlyMember() ? criteria.getUserId() : null)
         );

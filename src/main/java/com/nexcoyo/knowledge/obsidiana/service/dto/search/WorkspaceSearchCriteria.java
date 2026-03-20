@@ -12,6 +12,7 @@ import lombok.Setter;
 @Setter
 public class WorkspaceSearchCriteria {
     private UUID userId;
+    private UUID createdBy;
     private String nameOrSlug;
     private WorkspaceKind kind;
     private WorkspaceStatus status;

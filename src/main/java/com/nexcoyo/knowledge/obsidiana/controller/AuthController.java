@@ -37,9 +37,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout( @Valid @RequestBody RefreshRequest req) {
+    public ResponseEntity<Map<String, String>> logout( @Valid @RequestBody RefreshRequest req) {
         authService.logout(req);
-        return ResponseEntity.ok("{\"logOut\": \"ok\"}");
+        return ResponseEntity.ok(Map.of("logOut", "ok"));
     }
 
     @PostMapping("/forgot-password")

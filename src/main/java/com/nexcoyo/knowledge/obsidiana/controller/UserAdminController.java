@@ -13,10 +13,12 @@ import com.nexcoyo.knowledge.obsidiana.dto.response.UserSummaryResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.UserTagAssignmentResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.UserWorkspaceMembershipResponse;
 import com.nexcoyo.knowledge.obsidiana.facade.UserAdminFacade;
+import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,11 +31,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class UserAdminController {
 
     private final UserAdminFacade userAdminFacade;
+    private final GeneralService generalService;
 
     @PostMapping
     public UserDetailResponse create(@Valid @RequestBody CreateUserRequest request) {
@@ -43,6 +47,11 @@ public class UserAdminController {
     @GetMapping
     public PageResponse<UserSummaryResponse> search(UserSearchRequest request) {
         return userAdminFacade.search(request);
+    }
+
+    @GetMapping("/details")
+    public PageResponse<UserDetailResponse> searchDetailed(UserSearchRequest request) {
+        return userAdminFacade.searchDetailed(request);
     }
 
     @GetMapping("/{userId}")
@@ -68,12 +77,13 @@ public class UserAdminController {
         return userAdminFacade.listUserWorkspaceMemberships(userId, status);
     }
 
-    @PostMapping("/{userId}/workspaces")
+    @PostMapping({"/{userId}/workspaces", "/{userId}/add-to-workspaces"})
     public UserWorkspaceMembershipResponse addToWorkspace(
             @PathVariable UUID userId,
             @Valid @RequestBody UpsertUserWorkspaceMembershipRequest request
     ) {
-        return userAdminFacade.upsertWorkspaceMembership(userId, request);
+        UUID actorId = generalService.getIdUserFromSession();
+        return userAdminFacade.upsertWorkspaceMembership(userId, request, actorId);
     }
 
     @PutMapping("/{userId}/workspaces/{workspaceId}")
@@ -82,16 +92,17 @@ public class UserAdminController {
             @PathVariable UUID workspaceId,
             @Valid @RequestBody UpdateUserWorkspaceMembershipRequest request
     ) {
-        return userAdminFacade.updateWorkspaceMembership(userId, workspaceId, request);
+        UUID actorId = generalService.getIdUserFromSession();
+        return userAdminFacade.updateWorkspaceMembership(userId, workspaceId, request, actorId);
     }
 
     @DeleteMapping("/{userId}/workspaces/{workspaceId}")
     public void removeFromWorkspace(
             @PathVariable UUID userId,
-            @PathVariable UUID workspaceId,
-            @RequestParam(required = false) UUID actorUserId
+            @PathVariable UUID workspaceId
     ) {
-        userAdminFacade.removeWorkspaceMembership(userId, workspaceId, actorUserId);
+        UUID actorId = generalService.getIdUserFromSession();
+        userAdminFacade.removeWorkspaceMembership(userId, workspaceId, actorId);
     }
 
     @GetMapping("/{userId}/tags")
@@ -108,7 +119,8 @@ public class UserAdminController {
             @PathVariable UUID userId,
             @Valid @RequestBody AssignUserTagRequest request
     ) {
-        return userAdminFacade.assignTag(userId, request);
+        UUID actorId = generalService.getIdUserFromSession();
+        return userAdminFacade.assignTag(userId, request, actorId);
     }
 
     @DeleteMapping("/{userId}/tags/{tagId}")

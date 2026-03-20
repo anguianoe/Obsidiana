@@ -1,5 +1,21 @@
 # Flujo Completo de Wikis — Relaciones entre Entidades
 
+## 🔎 Auditoría reciente de controllers
+
+Documentos generados el **2026-03-20**:
+- `CONTROLLER_AUDIT_REPORT_2026-03-20.md`
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md`
+- `INDICE_COMPLETO_DOCUMENTACION.md`
+
+Scope auditado:
+- `WorkspaceController`
+- `WorkspaceAdminController`
+- `UserAdminController`
+- `AuthController`
+
+Validación técnica ejecutada:
+- `./gradlew build` ✅
+
 ---
 
 ## 🗺️ Diagrama de Relaciones

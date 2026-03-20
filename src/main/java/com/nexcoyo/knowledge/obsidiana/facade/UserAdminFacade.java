@@ -53,6 +53,12 @@ public class UserAdminFacade {
         return PageResponse.from(page, this::toUser);
     }
 
+    public PageResponse<UserDetailResponse> searchDetailed(UserSearchRequest request) {
+        UserSearchRequest effectiveRequest = applyDefaultNameSorting(request);
+        Page<AppUser> page = userAdminService.search(effectiveRequest);
+        return PageResponse.from(page, user -> getById(user.getId()));
+    }
+
     public UserDetailResponse getById(UUID userId) {
         AppUser user = userAdminService.getById(userId);
         UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
@@ -88,13 +94,13 @@ public class UserAdminFacade {
     }
 
     @Transactional
-    public UserWorkspaceMembershipResponse upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request) {
-        return toMembership(userAdminService.upsertWorkspaceMembership(userId, request));
+    public UserWorkspaceMembershipResponse upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request, UUID actorUserId) {
+        return toMembership(userAdminService.upsertWorkspaceMembership(userId, request, actorUserId));
     }
 
     @Transactional
-    public UserWorkspaceMembershipResponse updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request) {
-        return toMembership(userAdminService.updateWorkspaceMembership(userId, workspaceId, request));
+    public UserWorkspaceMembershipResponse updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request, UUID actorUserId) {
+        return toMembership(userAdminService.updateWorkspaceMembership(userId, workspaceId, request, actorUserId));
     }
 
     @Transactional
@@ -112,6 +118,17 @@ public class UserAdminFacade {
     @Transactional
     public UserTagAssignmentResponse assignTag(UUID userId, AssignUserTagRequest request) {
         return toTagAssignment(userAdminService.assignTag(userId, request));
+    }
+
+    @Transactional
+    public UserTagAssignmentResponse assignTag(UUID userId, AssignUserTagRequest request, UUID actorUserId) {
+        AssignUserTagRequest effectiveRequest = new AssignUserTagRequest(
+                request.workspaceId(),
+                request.tagId(),
+                actorUserId,
+                request.assignmentStatus()
+        );
+        return assignTag(userId, effectiveRequest);
     }
 
     @Transactional
@@ -202,6 +219,36 @@ public class UserAdminFacade {
                 assignment.getAssignmentStatus() == null ? null : assignment.getAssignmentStatus().name(),
                 assignment.getCreatedBy() == null ? null : assignment.getCreatedBy().getId(),
                 assignment.getCreatedAt()
+        );
+    }
+
+    private UserSearchRequest applyDefaultNameSorting(UserSearchRequest request) {
+        if (request == null) {
+            return new UserSearchRequest(
+                    null, null, null, null, null,
+                    null, null, null, null, null,
+                    null, null, "username", "asc"
+            );
+        }
+
+        String sortBy = (request.sortBy() == null || request.sortBy().isBlank()) ? "username" : request.sortBy();
+        String sortDir = (request.sortDir() == null || request.sortDir().isBlank()) ? "asc" : request.sortDir();
+
+        return new UserSearchRequest(
+                request.text(),
+                request.email(),
+                request.username(),
+                request.systemRole(),
+                request.status(),
+                request.workspaceId(),
+                request.tagId(),
+                request.createdFrom(),
+                request.createdTo(),
+                request.includeDeleted(),
+                request.page(),
+                request.size(),
+                sortBy,
+                sortDir
         );
     }
 }

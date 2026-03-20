@@ -43,6 +43,7 @@ public class WorkspaceFacade {
         criteria.setNameOrSlug(text);
         criteria.setKind(kind);
         criteria.setStatus(status);
+        criteria.setCreatedBy(createdBy);
 
         Page<Workspace> page = workspaceService.search(criteria, pageable);
         return toEnrichedPage(page, workspaceId -> workspaceService.getRequired(workspaceId));

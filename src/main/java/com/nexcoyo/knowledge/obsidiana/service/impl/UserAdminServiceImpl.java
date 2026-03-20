@@ -163,8 +163,10 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     @Transactional
-    public WorkspaceMembership upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request) {
+    public WorkspaceMembership upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request, UUID actorUserId) {
         AppUser user = getById(userId);
+        AppUser actor = getById( actorUserId );
+        Instant now = Instant.now();
         Workspace workspace = requireWorkspace(request.workspaceId());
 
         WorkspaceMembership membership = workspaceMembershipRepository
@@ -174,11 +176,11 @@ public class UserAdminServiceImpl implements UserAdminService {
         membership.setWorkspace(workspace);
         membership.setUser(user);
         membership.setRole(parseWorkspaceRole(request.role(), WorkspaceRole.VIEWER));
-        membership.setStatus(parseMembershipStatus(request.status(), MembershipStatus.ACTIVE));
-        membership.setInvitedAt(request.invitedAt());
-        membership.setJoinedAt(resolveJoinedAt(membership.getJoinedAt(), request.joinedAt(), membership.getStatus()));
-        membership.setCreatedBy(resolveActor(request.actorUserId()));
-        Instant now = Instant.now();
+        membership.setStatus(MembershipStatus.ACTIVE);
+        membership.setInvitedAt(now);
+        membership.setJoinedAt(resolveJoinedAt(membership.getJoinedAt(), now, membership.getStatus()));
+        membership.setCreatedBy(actor);
+
         if (membership.getCreatedAt() == null) {
             membership.setCreatedAt(now);
         }
@@ -189,7 +191,7 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     @Transactional
-    public WorkspaceMembership updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request) {
+    public WorkspaceMembership updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request, UUID actorUserId) {
         getById(userId);
         WorkspaceMembership membership = workspaceMembershipRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Workspace membership not found. workspaceId=" + workspaceId + ", userId=" + userId));
@@ -201,13 +203,8 @@ public class UserAdminServiceImpl implements UserAdminService {
         if (request.status() != null && !request.status().isBlank()) {
             membership.setStatus(parseMembershipStatus(request.status(), membership.getStatus()));
         }
-        if (request.invitedAt() != null) {
-            membership.setInvitedAt(request.invitedAt());
-        }
-        membership.setJoinedAt(resolveJoinedAt(membership.getJoinedAt(), request.joinedAt(), membership.getStatus()));
-        if (request.actorUserId() != null) {
-            membership.setCreatedBy(resolveActor(request.actorUserId()));
-        }
+
+        membership.setCreatedBy(resolveActor(actorUserId));
         membership.setUpdatedAt(now);
 
         return workspaceMembershipRepository.save(membership);

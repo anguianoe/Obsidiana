@@ -22,6 +22,7 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 public class SecurityConfig {
 
     private static final String API = "/api/v1";
+    private static final String API_ADMIN = API + "/admin";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthJwtFilter authJwtFilter) {
@@ -61,8 +62,8 @@ public class SecurityConfig {
                             .requestMatchers( HttpMethod.GET, "/actuator/health").permitAll()
                             .requestMatchers(API + "/auth/**").permitAll()
                             .requestMatchers(
-                                    API + "/users/**",
-                                    API + "/admin/workspaces/**"
+                                    API_ADMIN + "/users/**",
+                                    API_ADMIN + "/workspaces/**"
                             ).hasRole( "SUPER_ADMIN" )
                             .requestMatchers(
                                     API + "/workspaces/**"

@@ -29,9 +29,9 @@ public interface UserAdminService {
 
     List<WorkspaceMembership> listUserWorkspaceMemberships(UUID userId, String status);
 
-    WorkspaceMembership upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request);
+    WorkspaceMembership upsertWorkspaceMembership(UUID userId, UpsertUserWorkspaceMembershipRequest request, UUID actorUserId);
 
-    WorkspaceMembership updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request);
+    WorkspaceMembership updateWorkspaceMembership(UUID userId, UUID workspaceId, UpdateUserWorkspaceMembershipRequest request, UUID actorUserId);
 
     void removeWorkspaceMembership(UUID userId, UUID workspaceId, UUID actorUserId);
 

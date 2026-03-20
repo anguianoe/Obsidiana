@@ -70,7 +70,7 @@ public class AuthService {
                                             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         if (!encoder.matches(req.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         List< RefreshTokenEntity > active = refreshTokens.findActiveByUserOldestFirst(user.getId(), Instant.now());

@@ -1,5 +1,22 @@
 # 📑 ÍNDICE COMPLETO DE DOCUMENTACIÓN - IMPLEMENTACIÓN @PreAuthorize
 
+## 🆕 Auditoría de controllers — 2026-03-20
+
+Documentos nuevos:
+- `CONTROLLER_AUDIT_REPORT_2026-03-20.md`
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md`
+
+Scope auditado:
+- `WorkspaceController`
+- `WorkspaceAdminController`
+- `UserAdminController`
+- `AuthController`
+
+Estado validado:
+- `./gradlew build` ✅
+
+---
+
 ## 📚 Documentos en la Raíz del Proyecto
 
 ```
@@ -7,6 +24,15 @@
 ├── README.md (original del proyecto)
 ├── build.gradle (original del proyecto)
 ├── settings.gradle (original del proyecto)
+│
+├── 📋 DOCUMENTOS DE AUDITORÍA DE CONTROLLERS
+│   ├── CONTROLLER_AUDIT_REPORT_2026-03-20.md
+│   │   └─ Reporte formal con hallazgos por severidad
+│   │      Scope: WorkspaceController, WorkspaceAdminController,
+│   │      UserAdminController, AuthController
+│   │
+│   └── CONTROLLER_AUDIT_MATRIX_2026-03-20.md
+│       └─ Matriz de endpoints, protección y riesgos por controller
 │
 ├── 📋 DOCUMENTOS DE ANÁLISIS INICIAL
 │   ├── VALIDACION_WORKSPACECONTROLLER.md
@@ -169,6 +195,8 @@
 
 | Documento | Tipo | Líneas | Tamaño |
 |-----------|------|--------|--------|
+| CONTROLLER_AUDIT_REPORT_2026-03-20.md | Auditoría | ~220 | ~10KB |
+| CONTROLLER_AUDIT_MATRIX_2026-03-20.md | Matriz | ~120 | ~8KB |
 | VALIDACION_WORKSPACECONTROLLER.md | Análisis | ~450 | ~18KB |
 | RECOMENDACIONES_SEGURIDAD.md | Guía | ~400 | ~16KB |
 | GUIA_IMPLEMENTACION_PREAUTHORIZE.md | Tutorial | ~500 | ~20KB |
@@ -180,7 +208,7 @@
 | DIAGRAMA_FLUJO_VALIDACION.md | Visual | ~400 | ~16KB |
 | RESUMEN_IMPLEMENTACION_FINAL.md | Resumen | ~250 | ~10KB |
 | RESUMEN_COMPLETO_IMPLEMENTACION.txt | Visual | ~300 | ~12KB |
-| **TOTAL** | **11 docs** | **~4,250 líneas** | **~170KB** |
+| **TOTAL** | **13 docs** | **~4,590 líneas** | **~188KB** |
 
 ### Archivos de Código Modificados
 
@@ -283,7 +311,7 @@
 ## 🎁 ENTREGABLES COMPLETOS
 
 ```
-✓ 11 documentos de referencia
+✓ 13 documentos de referencia
 ✓ 3 archivos de código modificados
 ✓ 100% de tests pasando
 ✓ 0 breaking changes
@@ -302,4 +330,3 @@ Para navegación rápida, use:
 - Consulte el "Caso de Uso" que mejor se ajuste a su necesidad
 
 ¡Documentación lista para auditoría y handoff! 📚✅
-

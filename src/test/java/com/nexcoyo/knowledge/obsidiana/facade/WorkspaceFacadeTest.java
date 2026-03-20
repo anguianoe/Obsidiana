@@ -113,6 +113,25 @@ class WorkspaceFacadeTest {
         assertThat(workspaceFacade.activeMembers(workspaceId)).isEmpty();
     }
 
+    @Test
+    void searchIncludesCreatedByFilterWhenProvided() {
+        UUID createdBy = UUID.randomUUID();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        when(workspaceService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(pageable)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
+
+        workspaceFacade.search("alpha", com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceKind.GROUP,
+                com.nexcoyo.knowledge.obsidiana.util.enums.WorkspaceStatus.ACTIVE, createdBy, pageable);
+
+        org.mockito.ArgumentCaptor<com.nexcoyo.knowledge.obsidiana.service.dto.search.WorkspaceSearchCriteria> captor =
+                org.mockito.ArgumentCaptor.forClass(com.nexcoyo.knowledge.obsidiana.service.dto.search.WorkspaceSearchCriteria.class);
+
+        verify(workspaceService).search(captor.capture(), org.mockito.ArgumentMatchers.eq(pageable));
+        assertThat(captor.getValue().getCreatedBy()).isEqualTo(createdBy);
+        assertThat(captor.getValue().getNameOrSlug()).isEqualTo("alpha");
+    }
+
     private static WorkspaceMembership membership(UUID workspaceId, UUID userId, String username, UserStatus userStatus) {
         Workspace workspace = new Workspace();
         workspace.setId(workspaceId);
@@ -134,4 +153,3 @@ class WorkspaceFacadeTest {
         return membership;
     }
 }
-

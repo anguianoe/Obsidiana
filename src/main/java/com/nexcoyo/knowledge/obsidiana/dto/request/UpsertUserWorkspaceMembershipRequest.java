@@ -9,10 +9,6 @@ import java.util.UUID;
 
 public record UpsertUserWorkspaceMembershipRequest(
         @NotNull UUID workspaceId,
-        @NotBlank String role,
-        String status,
-        UUID actorUserId,
-        Instant invitedAt,
-        Instant joinedAt
+        @NotBlank String role
 ) {
 }

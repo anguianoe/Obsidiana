@@ -48,7 +48,7 @@ public class WorkspaceAdminController
     @PostMapping
     public WorkspaceResponse create(@Valid @RequestBody WorkspaceUpsertRequest request) {
         UUID userId = generalService.getIdUserFromSession();
-        return workspaceFacade.save(request, userId, false);
+        return workspaceFacade.save(request, userId, true);
     }
 
     @GetMapping("/{workspaceId}")
