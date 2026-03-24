@@ -10,7 +10,6 @@ import java.util.UUID;
 public record WikiPageUpsertRequest(
     UUID id,
     UUID publicUuid,
-    @NotNull UUID ownerUserId,
     @NotBlank @Size(max = 255) String title,
     @NotBlank @Size(max = 180) String slug,
     @NotNull EditMode editMode,

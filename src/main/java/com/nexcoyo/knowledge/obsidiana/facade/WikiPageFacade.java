@@ -43,10 +43,11 @@ public class WikiPageFacade {
         return ApiMapper.toResponse(wikiPageService.getRequired(id));
     }
 
-    public WikiPageResponse save( WikiPageUpsertRequest request) {
+    public WikiPageResponse save( WikiPageUpsertRequest request, UUID ownerUserId) {
+
         WikiPage entity = request.id() == null ? new WikiPage() : wikiPageService.getRequired(request.id());
         entity.setPublicUuid(request.publicUuid() == null ? java.util.UUID.randomUUID() : request.publicUuid());
-        entity.setOwnerUser(refs.user(request.ownerUserId()));
+        entity.setOwnerUser(refs.user(ownerUserId));
         entity.setTitle(request.title());
         entity.setSlug(request.slug());
         entity.setEditMode(request.editMode());
@@ -55,10 +56,11 @@ public class WikiPageFacade {
         entity.setIsPublicable(request.isPublicable());
         entity.setCurrentRevision(refs.revision(request.currentRevisionId()));
         return ApiMapper.toResponse(wikiPageService.save(entity));
+
     }
 
-    public PageLinkResponse linkToWorkspace( LinkPageToWorkspaceRequest request) {
-        return ApiMapper.toResponse(wikiPageService.linkToWorkspace(request.pageId(), request.workspaceId(), request.linkedBy()));
+    public PageLinkResponse linkToWorkspace( LinkPageToWorkspaceRequest request, UUID ownerUserId) {
+        return ApiMapper.toResponse(wikiPageService.linkToWorkspace(request.pageId(), request.workspaceId(), ownerUserId));
     }
 
     public List< PageTreeNodeResponse > tree( UUID workspaceId, UUID parentPageId) {

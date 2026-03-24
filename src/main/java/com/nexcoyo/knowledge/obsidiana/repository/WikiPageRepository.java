@@ -29,9 +29,9 @@ public interface WikiPageRepository extends JpaRepository<WikiPage, UUID>, JpaSp
           and (:workspaceId is null or pwl.workspace.id = :workspaceId)
           and (:tagId is null or pta.tag.id = :tagId)
           and (
-              :searchText is null
-              or lower(p.title) like lower(concat('%', :searchText, '%'))
-              or lower(p.slug) like lower(concat('%', :searchText, '%'))
+                  cast(:searchText as string) is null
+                  or lower(p.title) like lower(concat('%', cast(:searchText as string), '%'))
+                  or lower(p.slug) like lower(concat('%', cast(:searchText as string), '%'))
           )
         order by p.updatedAt desc
     """)

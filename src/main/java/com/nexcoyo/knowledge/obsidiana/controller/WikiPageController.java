@@ -7,6 +7,7 @@ import com.nexcoyo.knowledge.obsidiana.dto.response.PageLinkResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.PageTreeNodeResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageResponse;
 import com.nexcoyo.knowledge.obsidiana.facade.WikiPageFacade;
+import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import com.nexcoyo.knowledge.obsidiana.util.enums.PageStatus;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class WikiPageController {
 
     private final WikiPageFacade wikiPageFacade;
+    private final GeneralService generalService;
 
     @GetMapping
     public PageResponse< WikiPageResponse > search(
@@ -51,20 +53,23 @@ public class WikiPageController {
 
     @PostMapping
     public WikiPageResponse create(@Valid @RequestBody WikiPageUpsertRequest request) {
-        return wikiPageFacade.save(request);
+        UUID userId = generalService.getIdUserFromSession();
+        return wikiPageFacade.save(request,userId);
     }
 
     @PutMapping("/{pageId}")
     public WikiPageResponse update(@PathVariable UUID pageId, @Valid @RequestBody WikiPageUpsertRequest request) {
+        UUID userId = generalService.getIdUserFromSession();
         return wikiPageFacade.save(new WikiPageUpsertRequest(
-            pageId, request.publicUuid(), request.ownerUserId(), request.title(), request.slug(),
+            pageId, request.publicUuid(), request.title(), request.slug(),
             request.editMode(), request.pageStatus(), request.isEncrypted(), request.isPublicable(), request.currentRevisionId()
-        ));
+        ), userId);
     }
 
     @PostMapping("/link-workspace")
     public PageLinkResponse linkToWorkspace( @Valid @RequestBody LinkPageToWorkspaceRequest request) {
-        return wikiPageFacade.linkToWorkspace(request);
+        UUID userId = generalService.getIdUserFromSession();
+        return wikiPageFacade.linkToWorkspace(request, userId);
     }
 
     @GetMapping("/tree")
