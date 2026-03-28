@@ -10,75 +10,75 @@ import com.nexcoyo.knowledge.obsidiana.facade.WikiPageFacade;
 import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import com.nexcoyo.knowledge.obsidiana.util.enums.PageStatus;
 import jakarta.validation.Valid;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/pages")
+@RequestMapping("/api/v1/admin/pages")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('USER')")
-public class WikiPageController {
-
+@PreAuthorize("hasRole('SUPER_ADMIN')")
+public class WikiPageAdminController
+{
     private final WikiPageFacade wikiPageFacade;
     private final GeneralService generalService;
 
     @GetMapping
     public PageResponse< WikiPageResponse > search(
-        @RequestParam(required = false) String text,
-        @RequestParam(required = false) UUID ownerUserId,
-        @RequestParam(required = false) Boolean encrypted,
-        @RequestParam(required = false) PageStatus status,
-        Pageable pageable
+            @RequestParam(required = false) String text,
+            @RequestParam(required = false) UUID ownerUserId,
+            @RequestParam(required = false) Boolean encrypted,
+            @RequestParam(required = false) PageStatus status,
+            Pageable pageable
     ) {
-        UUID userId = generalService.getIdUserFromSession();
-        return wikiPageFacade.search(text, ownerUserId, encrypted, status, pageable, false, userId);
+        return wikiPageFacade.search(text, ownerUserId, encrypted, status, pageable, true, null);
     }
 
     @GetMapping("/accessible")
     public PageResponse<WikiPageResponse> searchAccessible(
-        @RequestParam(required = false) UUID workspaceId,
-        @RequestParam(required = false) UUID tagId,
-        @RequestParam(required = false) String searchText,
-        Pageable pageable
+            @RequestParam UUID userId,
+            @RequestParam(required = false) UUID workspaceId,
+            @RequestParam(required = false) UUID tagId,
+            @RequestParam(required = false) String searchText,
+            Pageable pageable
     ) {
-        UUID userId = generalService.getIdUserFromSession();
         return wikiPageFacade.searchAccessible(userId, workspaceId, tagId, searchText, pageable);
     }
 
     @GetMapping("/{pageId}")
     public WikiPageResponse getById(@PathVariable UUID pageId) {
-        UUID userId = generalService.getIdUserFromSession();
-        return wikiPageFacade.getById(pageId, userId);
-    }
-
-    @PostMapping
-    public WikiPageResponse create(@Valid @RequestBody WikiPageUpsertRequest request) {
-        UUID userId = generalService.getIdUserFromSession();
-        return wikiPageFacade.save(request, userId, false);
+        return wikiPageFacade.getById(pageId, null);  // null = admin, no access check
     }
 
     @PutMapping("/{pageId}")
     public WikiPageResponse update(@PathVariable UUID pageId, @Valid @RequestBody WikiPageUpsertRequest request) {
         UUID userId = generalService.getIdUserFromSession();
         return wikiPageFacade.save(new WikiPageUpsertRequest(
-            pageId, request.publicUuid(), request.title(), request.slug(),
-            request.editMode(), request.pageStatus(), request.isEncrypted(), request.isPublicable(), request.currentRevisionId()
-        ), userId, false);
+                pageId, request.publicUuid(), request.title(), request.slug(),
+                request.editMode(), request.pageStatus(), request.isEncrypted(), request.isPublicable(), request.currentRevisionId()
+        ), userId, true);
     }
 
     @PostMapping("/link-workspace")
     public PageLinkResponse linkToWorkspace( @Valid @RequestBody LinkPageToWorkspaceRequest request) {
         UUID userId = generalService.getIdUserFromSession();
-        return wikiPageFacade.linkToWorkspace(request, userId, false);
+        return wikiPageFacade.linkToWorkspace(request, userId, true);
     }
 
     @GetMapping("/tree")
     public List< PageTreeNodeResponse > tree( @RequestParam UUID workspaceId, @RequestParam(required = false) UUID parentPageId) {
-        UUID userId = generalService.getIdUserFromSession();
-        return wikiPageFacade.tree(workspaceId, parentPageId, userId);
+        return wikiPageFacade.tree(workspaceId, parentPageId, null);  // null = admin, no membership check
     }
 }
+

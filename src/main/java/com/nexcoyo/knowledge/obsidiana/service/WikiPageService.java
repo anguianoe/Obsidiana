@@ -11,10 +11,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface WikiPageService {
-    Page< WikiPage > search( WikiPageSearchCriteria criteria, Pageable pageable);
+    Page< WikiPage > search( WikiPageSearchCriteria criteria, Pageable pageable, UUID userId);
     Page<WikiPage> searchAccessible(UUID userId, UUID workspaceId, UUID tagId, String searchText, Pageable pageable);
     WikiPage getRequired(UUID pageId);
     WikiPage save(WikiPage page);
     PageWorkspaceLink linkToWorkspace( UUID pageId, UUID workspaceId, UUID linkedBy);
     List< PageTreeNodeProjection > getTree( UUID workspaceId, UUID parentPageId);
+    /** Throws {@link jakarta.persistence.EntityNotFoundException} if userId has no access to the page. */
+    void assertUserPageAccess(UUID pageId, UUID userId);
+    /** Throws {@link jakarta.persistence.EntityNotFoundException} if userId has no active membership in the workspace. */
+    void assertUserWorkspaceAccess(UUID workspaceId, UUID userId);
 }

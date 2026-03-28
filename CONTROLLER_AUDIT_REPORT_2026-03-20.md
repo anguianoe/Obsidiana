@@ -72,3 +72,84 @@ Modo: **sin editar / con propuestas** en auditoría inicial, luego **remediació
 ## Cierre
 - Hallazgos **medios y bajos**: corregidos.
 - Hallazgo **crítico**: pendiente, separado para siguiente intervención.
+
+---
+
+## Auditoría incremental — 2026-03-28 (WikiPage scope)
+
+### Scope
+Controllers auditados:
+- `WikiPageController`
+- `WikiPageAdminController`
+
+Modo: **sin editar / con propuestas**.
+
+### Validación técnica ejecutada
+- `./gradlew test` ✅ (BUILD SUCCESSFUL)
+- `./gradlew build` ✅ (BUILD SUCCESSFUL)
+
+### Hallazgos (crítica -> media -> baja)
+
+#### Crítica
+- **Sin hallazgos críticos en este corte.**
+  - Evidencia de hardening aplicado:
+    - `WikiPageController` ahora declara `@PreAuthorize("hasRole('USER')")` en `src/main/java/com/nexcoyo/knowledge/obsidiana/controller/WikiPageController.java:23`.
+    - `SecurityConfig` protege `API + "/pages/**"` y `API_ADMIN + "/pages/**"` por rol en `src/main/java/com/nexcoyo/knowledge/obsidiana/config/SecurityConfig.java:64-74`.
+
+#### Media
+1. **Inconsistencia de semántica de acceso entre `search` y `searchAccessible`**
+   - Evidencia:
+     - `search` aplica predicado propietario OR membresía activa (`WikiPageSpecifications.accessibleToUser`) en `src/main/java/com/nexcoyo/knowledge/obsidiana/service/specification/WikiPageSpecifications.java:34-54`.
+     - `searchAccessible` usa query repository solo por membresía activa (`src/main/java/com/nexcoyo/knowledge/obsidiana/repository/WikiPageRepository.java:37-54`).
+   - Riesgo: un usuario puede ver páginas propias en `GET /api/v1/pages`, pero no necesariamente en `GET /api/v1/pages/accessible` si no están vinculadas a workspace.
+   - Propuesta: alinear `searchAccessible` al mismo contrato (owner OR membership), o documentar explícitamente que `accessible` es solo por workspace.
+
+2. **Cobertura de pruebas específica de controllers de WikiPage ausente**
+   - Evidencia:
+     - No existen `WikiPageControllerTest` ni `WikiPageAdminControllerTest` en `src/test/java`.
+   - Riesgo: regresiones de seguridad de rutas (401/403), extracción de actor desde sesión, y separación admin/user podrían pasar sin detección temprana.
+   - Propuesta: agregar pruebas unitarias de controller (anotaciones de seguridad, forwarding de `userId` de sesión, y ausencia de endpoint de create en admin).
+
+#### Baja
+1. **Acoplamiento de control de acceso en capa facade por convención implícita**
+   - Evidencia: comportamiento dual por `userId == null` / `isAdmin` en `src/main/java/com/nexcoyo/knowledge/obsidiana/facade/WikiPageFacade.java:48-99`.
+   - Riesgo: futuros cambios pueden introducir bypass accidental si no se mantiene la convención de `null = admin`.
+   - Propuesta: documentar contrato en JavaDoc de métodos públicos del facade y en guía de endpoints.
+
+### Resultado del modo solicitado
+- **Sin editar código de controllers en esta auditoría.**
+- Se entregan propuestas accionables para remediación posterior sin cambiar la lógica actual en ejecución.
+
+### Remediación aplicada (2026-03-28)
+Se aplicaron las propuestas solicitadas para severidades media y baja:
+
+1. **Media: unificación `search` vs `searchAccessible`**
+   - Estado: ✅ **RESUELTO**
+   - Cambio: `WikiPageServiceImpl.searchAccessible(...)` ahora usa `WikiPageSearchCriteria` + `search(...)` compartido con regla owner OR membership.
+
+2. **Media: pruebas de controllers WikiPage**
+   - Estado: ✅ **RESUELTO**
+   - Nuevas pruebas:
+     - `src/test/java/com/nexcoyo/knowledge/obsidiana/controller/WikiPageControllerTest.java`
+     - `src/test/java/com/nexcoyo/knowledge/obsidiana/controller/WikiPageAdminControllerTest.java`
+
+3. **Baja: formalizar contrato admin (`userId=null`)**
+   - Estado: ✅ **RESUELTO**
+   - Cambio: JavaDoc explícito agregado en `WikiPageFacade` para `search`, `getById`, `linkToWorkspace` y `tree`.
+
+### Revalidación solicitada (2026-03-28)
+Scope revalidado:
+- `WikiPageController`
+- `WikiPageAdminController`
+
+Validación técnica ejecutada:
+- `./gradlew test` ✅ (BUILD SUCCESSFUL)
+- `./gradlew build` ✅ (BUILD SUCCESSFUL)
+
+Estado de severidad en esta revalidación (crítica -> media -> baja):
+- Crítica: 0 hallazgos abiertos
+- Media: 0 hallazgos abiertos
+- Baja: 0 hallazgos abiertos
+
+Observación: se confirma que la auditoría incremental de WikiPage permanece cerrada tras la unificación de acceso, cobertura de pruebas y formalización del contrato admin.
+

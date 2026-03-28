@@ -18,6 +18,23 @@ public interface WikiPageRepository extends JpaRepository<WikiPage, UUID>, JpaSp
     Optional< WikiPage > findByPublicUuid( UUID publicUuid);
 
     @Query("""
+        select count(p) > 0
+        from WikiPage p
+        where p.id = :pageId
+          and (
+            p.ownerUser.id = :userId
+            or exists (
+              select pwl from PageWorkspaceLink pwl
+              join WorkspaceMembership wm on wm.workspace.id = pwl.workspace.id
+              where pwl.page.id = p.id
+                and wm.user.id = :userId
+                and wm.status = com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus.ACTIVE
+            )
+          )
+    """)
+    boolean existsAccessibleByIdAndUserId(@Param("pageId") UUID pageId, @Param("userId") UUID userId);
+
+    @Query("""
         select p
         from WikiPage p
         join PageWorkspaceLink pwl on pwl.page.id = p.id

@@ -31,3 +31,30 @@
 | Hallazgo crítico | Estado |
 |---|---|
 | `forgot-password` loggea token de reset en claro | ⏳ Pendiente para siguiente intervención |
+
+---
+
+## Auditoría incremental — 2026-03-28 (WikiPage scope)
+
+### Baseline técnico validado
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+Última revalidación: 2026-03-28 ✅
+
+### Estado por controller
+
+| Controller | Estado actual | Hallazgos principales |
+|---|---|---|
+| `WikiPageController` | OK | Ninguno |
+| `WikiPageAdminController` | OK | Ninguno |
+
+### Matriz de hallazgos y propuestas
+
+| Severidad | Hallazgo | Evidencia | Propuesta |
+|---|---|---|---|
+| Crítica | Sin hallazgos críticos en este corte | `WikiPageController` con `@PreAuthorize("hasRole('USER')")` + reglas explícitas en `SecurityConfig` para `/api/v1/pages/**` y `/api/v1/admin/pages/**` | Mantener controles y cubrirlos con tests de seguridad |
+| Media | `search` y `searchAccessible` no compartían contrato de acceso | `WikiPageServiceImpl.searchAccessible` ahora usa ruta unificada por `search` | ✅ Resuelto (owner OR membership unificado) |
+| Media | No había pruebas unitarias dedicadas para ambos controllers | Se agregaron `WikiPageControllerTest` y `WikiPageAdminControllerTest` | ✅ Resuelto |
+| Baja | Convención `userId == null` para admin estaba implícita | JavaDoc explícito en métodos públicos de `WikiPageFacade` | ✅ Resuelto |
+

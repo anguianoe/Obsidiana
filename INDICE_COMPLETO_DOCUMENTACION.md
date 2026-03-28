@@ -15,6 +15,27 @@ Scope auditado:
 Estado validado:
 - `./gradlew build` ✅
 
+## 🆕 Auditoría incremental de controllers — 2026-03-28
+
+Documentos actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-03-20.md` (sección incremental WikiPage)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (matriz incremental WikiPage)
+
+Scope incremental auditado:
+- `WikiPageController`
+- `WikiPageAdminController`
+
+Estado validado:
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+Revalidación más reciente: 2026-03-28 ✅
+
+Estado de hallazgos WikiPage (último corte):
+- Críticos: 0
+- Medios: 0
+- Bajos: 0
+
 ---
 
 ## 📚 Documentos en la Raíz del Proyecto

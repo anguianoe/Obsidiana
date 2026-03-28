@@ -6,7 +6,9 @@ import com.nexcoyo.knowledge.obsidiana.entity.PageHierarchy;
 import com.nexcoyo.knowledge.obsidiana.entity.PageTagAssignment;
 import com.nexcoyo.knowledge.obsidiana.entity.PageWorkspaceLink;
 import com.nexcoyo.knowledge.obsidiana.entity.WikiPage;
+import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceMembership;
 import com.nexcoyo.knowledge.obsidiana.service.dto.search.WikiPageSearchCriteria;
+import com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class WikiPageSpecifications {
@@ -27,6 +29,29 @@ public final class WikiPageSpecifications {
             rootPages(criteria.getOnlyRootPages(), criteria.getWorkspaceId()),
             childOf(criteria.getParentPageId(), criteria.getWorkspaceId())
         );
+    }
+
+    public static Specification<WikiPage> accessibleToUser(UUID userId) {
+        return (root, query, cb) -> {
+            if (userId == null) return null;
+
+            var membershipSubquery = query.subquery(UUID.class);
+            var membership = membershipSubquery.from(WorkspaceMembership.class);
+            var pageWorkspaceLink = membershipSubquery.from(PageWorkspaceLink.class);
+
+            membershipSubquery.select(pageWorkspaceLink.get("page").get("id"));
+            membershipSubquery.where(
+                cb.equal(pageWorkspaceLink.get("page").get("id"), root.get("id")),
+                cb.equal(pageWorkspaceLink.get("workspace").get("id"), membership.get("workspace").get("id")),
+                cb.equal(membership.get("user").get("id"), userId),
+                cb.equal(membership.get("status"), MembershipStatus.ACTIVE)
+            );
+
+            return cb.or(
+                cb.equal(root.get("ownerUser").get("id"), userId),
+                cb.exists(membershipSubquery)
+            );
+        };
     }
 
     public static Specification<WikiPage> ownerUser(UUID ownerUserId) {

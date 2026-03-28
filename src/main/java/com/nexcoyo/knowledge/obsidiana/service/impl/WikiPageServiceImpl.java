@@ -8,10 +8,13 @@ import com.nexcoyo.knowledge.obsidiana.projection.PageTreeNodeProjection;
 import com.nexcoyo.knowledge.obsidiana.repository.AppUserRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.PageWorkspaceLinkRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WikiPageRepository;
+import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceMembershipRepository;
 import com.nexcoyo.knowledge.obsidiana.repository.WorkspaceRepository;
 import com.nexcoyo.knowledge.obsidiana.service.WikiPageService;
 import com.nexcoyo.knowledge.obsidiana.service.dto.search.WikiPageSearchCriteria;
 import com.nexcoyo.knowledge.obsidiana.service.specification.WikiPageSpecifications;
+import com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus;
+import com.nexcoyo.knowledge.obsidiana.util.enums.PageStatus;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -31,15 +34,27 @@ public class WikiPageServiceImpl implements WikiPageService {
     private final PageWorkspaceLinkRepository pageWorkspaceLinkRepository;
     private final WorkspaceRepository workspaceRepository;
     private final AppUserRepository appUserRepository;
+    private final WorkspaceMembershipRepository workspaceMembershipRepository;
 
     @Override
-    public Page< WikiPage > search( WikiPageSearchCriteria criteria, Pageable pageable) {
-        return wikiPageRepository.findAll(WikiPageSpecifications.byCriteria(criteria), pageable);
+    public Page< WikiPage > search( WikiPageSearchCriteria criteria, Pageable pageable, UUID userId) {
+        var specification = WikiPageSpecifications.byCriteria(criteria);
+
+        if (userId != null) {
+            specification = specification.and(WikiPageSpecifications.accessibleToUser(userId));
+        }
+
+        return wikiPageRepository.findAll(specification, pageable);
     }
 
     @Override
     public Page<WikiPage> searchAccessible(UUID userId, UUID workspaceId, UUID tagId, String searchText, Pageable pageable) {
-        return wikiPageRepository.searchAccessiblePages(userId, workspaceId, tagId, searchText, pageable);
+        WikiPageSearchCriteria criteria = new WikiPageSearchCriteria();
+        criteria.setWorkspaceId(workspaceId);
+        criteria.setTagId(tagId);
+        criteria.setText(searchText);
+        criteria.setPageStatus(PageStatus.ACTIVE);
+        return search(criteria, pageable, userId);
     }
 
     @Override
@@ -76,5 +91,21 @@ public class WikiPageServiceImpl implements WikiPageService {
     @Override
     public List< PageTreeNodeProjection > getTree( UUID workspaceId, UUID parentPageId) {
         return wikiPageRepository.findTreeNodes(workspaceId, parentPageId);
+    }
+
+    @Override
+    public void assertUserPageAccess(UUID pageId, UUID userId) {
+        if (!wikiPageRepository.existsAccessibleByIdAndUserId(pageId, userId)) {
+            throw new EntityNotFoundException("Wiki page not found or access denied: " + pageId);
+        }
+    }
+
+    @Override
+    public void assertUserWorkspaceAccess(UUID workspaceId, UUID userId) {
+        boolean hasActiveMembership = workspaceMembershipRepository
+            .existsByWorkspaceIdAndUserIdAndStatus(workspaceId, userId, MembershipStatus.ACTIVE);
+        if (!hasActiveMembership) {
+            throw new EntityNotFoundException("Workspace not found or access denied: " + workspaceId);
+        }
     }
 }

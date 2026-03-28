@@ -64,10 +64,12 @@ public class SecurityConfig {
                             .requestMatchers(
                                     API_ADMIN + "/users/**",
                                     API_ADMIN + "/workspaces/**",
+                                    API_ADMIN + "/pages/**",
                                     API_ADMIN + "/tags/**"
                             ).hasRole( "SUPER_ADMIN" )
                             .requestMatchers(
                                     API + "/workspaces/**",
+                                    API + "/pages/**",
                                     API + "/tags/**"
                             ).hasRole( "USER" )
                             /*
