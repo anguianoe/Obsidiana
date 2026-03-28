@@ -65,11 +65,13 @@ public class SecurityConfig {
                                     API_ADMIN + "/users/**",
                                     API_ADMIN + "/workspaces/**",
                                     API_ADMIN + "/pages/**",
+                                    API_ADMIN + "/page-revisions/**",
                                     API_ADMIN + "/tags/**"
                             ).hasRole( "SUPER_ADMIN" )
                             .requestMatchers(
                                     API + "/workspaces/**",
                                     API + "/pages/**",
+                                    API + "/page-revisions/**",
                                     API + "/tags/**"
                             ).hasRole( "USER" )
                             /*
@@ -85,7 +87,7 @@ public class SecurityConfig {
                                     API + "/reports/**"
                             ).hasAnyRole("ADMIN", "USER")
                             //.requestMatchers(API + "/**").authenticated()*/
-                            .anyRequest().permitAll()
+                            .anyRequest().authenticated()
                     )
                     .addFilterBefore(authJwtFilter, UsernamePasswordAuthenticationFilter.class);
 

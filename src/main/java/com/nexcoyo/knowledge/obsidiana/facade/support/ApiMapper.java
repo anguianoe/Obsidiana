@@ -17,7 +17,9 @@ import com.nexcoyo.knowledge.obsidiana.dto.response.RevisionSummaryResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.StoredAssetResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.TrashRecordResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageResponse;
+import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageRevisionEncryptedResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageRevisionResponse;
+import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageRevisionViewResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WorkspaceInvitationResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WorkspaceMembershipResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WorkspaceResponse;
@@ -46,6 +48,7 @@ import com.nexcoyo.knowledge.obsidiana.projection.PageTreeNodeProjection;
 import com.nexcoyo.knowledge.obsidiana.projection.PublicPageSummaryProjection;
 import com.nexcoyo.knowledge.obsidiana.projection.RevisionSummaryProjection;
 import com.nexcoyo.knowledge.obsidiana.projection.WorkspaceSummaryProjection;
+import java.util.Base64;
 
 public final class ApiMapper {
     private ApiMapper() {}
@@ -158,12 +161,39 @@ public final class ApiMapper {
         return new PageTreeNodeResponse(p.getPageId(), p.getTitle(), p.getSlug(), p.getSortOrder(), p.getChildCount());
     }
 
-    public static WikiPageRevisionResponse toResponse( WikiPageRevision entity) {
+    public static WikiPageRevisionViewResponse toResponse(WikiPageRevision entity) {
+        if (Boolean.TRUE.equals(entity.getIsEncrypted())) {
+            return new WikiPageRevisionEncryptedResponse(
+                entity.getId(),
+                idOf(entity.getPage()),
+                entity.getRevisionNumber(),
+                entity.getTitleSnapshot(),
+                entity.getEditorType(),
+                entity.getChangeSummary(),
+                entity.getIsEncrypted(),
+                entity.getContentCiphertext() == null ? null : Base64.getEncoder().encodeToString(entity.getContentCiphertext()),
+                entity.getContentIv(),
+                entity.getContentAuthTag(),
+                entity.getEncryptionKdf(),
+                entity.getIsPinned(),
+                idOf(entity.getCreatedBy()),
+                entity.getCreatedAt()
+            );
+        }
+
         return new WikiPageRevisionResponse(
-            entity.getId(), idOf(entity.getPage()), entity.getRevisionNumber(), entity.getTitleSnapshot(), entity.getEditorType(),
-            entity.getContentHtml(), entity.getContentText(), entity.getChangeSummary(), entity.getIsEncrypted(),
-            entity.getContentIv(), entity.getContentAuthTag(), entity.getEncryptionKdf(), entity.getIsPinned(),
-            idOf(entity.getCreatedBy()), entity.getCreatedAt()
+            entity.getId(),
+            idOf(entity.getPage()),
+            entity.getRevisionNumber(),
+            entity.getTitleSnapshot(),
+            entity.getEditorType(),
+            entity.getContentHtml(),
+            entity.getContentText(),
+            entity.getChangeSummary(),
+            entity.getIsEncrypted(),
+            entity.getIsPinned(),
+            idOf(entity.getCreatedBy()),
+            entity.getCreatedAt()
         );
     }
 

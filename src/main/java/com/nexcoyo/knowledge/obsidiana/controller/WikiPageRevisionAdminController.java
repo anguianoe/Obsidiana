@@ -9,7 +9,6 @@ import com.nexcoyo.knowledge.obsidiana.facade.support.AccessContext;
 import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import com.nexcoyo.knowledge.obsidiana.util.enums.EditorType;
 import jakarta.validation.Valid;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -23,31 +22,32 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/v1/page-revisions")
-@RequiredArgsConstructor
-@PreAuthorize("hasRole('USER')")
-public class WikiPageRevisionController {
+import java.util.UUID;
 
+@RestController
+@RequestMapping("/api/v1/admin/page-revisions")
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('SUPER_ADMIN')")
+public class WikiPageRevisionAdminController {
     private final WikiPageRevisionFacade revisionFacade;
     private final GeneralService generalService;
 
     @GetMapping("/{revisionId}")
     public WikiPageRevisionViewResponse getById(@PathVariable UUID revisionId) {
-        UUID userId = generalService.getIdUserFromSession();
-        return revisionFacade.getById(revisionId, AccessContext.user(userId));
+        UUID actorId = generalService.getIdUserFromSession();
+        return revisionFacade.getById(revisionId, AccessContext.admin(actorId));
     }
 
     @GetMapping("/latest/{pageId}")
     public WikiPageRevisionViewResponse latest(@PathVariable UUID pageId) {
-        UUID userId = generalService.getIdUserFromSession();
-        return revisionFacade.latest(pageId, AccessContext.user(userId));
+        UUID actorId = generalService.getIdUserFromSession();
+        return revisionFacade.latest(pageId, AccessContext.admin(actorId));
     }
 
     @GetMapping("/summary/{pageId}")
     public PageResponse<RevisionSummaryResponse> summary(@PathVariable UUID pageId, @PageableDefault(size = 50) Pageable pageable) {
-        UUID userId = generalService.getIdUserFromSession();
-        return revisionFacade.summary(pageId, AccessContext.user(userId), pageable);
+        UUID actorId = generalService.getIdUserFromSession();
+        return revisionFacade.summary(pageId, AccessContext.admin(actorId), pageable);
     }
 
     @PostMapping
@@ -57,11 +57,11 @@ public class WikiPageRevisionController {
 
         // Product decision: CKEDITOR remains fixed until other editors are supported.
         return revisionFacade.save(new WikiPageRevisionCreateRequest(
-            null, request.pageId(), null, request.titleSnapshot(), EditorType.CKEDITOR,
-            request.contentHtml(), request.contentText(), request.contentCiphertext(), request.changeSummary(), request.isEncrypted(),
-            request.contentIv(), request.contentAuthTag(), request.encryptionKdf(), request.isPinned(),
-            userId, true
-        ), AccessContext.user(userId));
+                null, request.pageId(), null, request.titleSnapshot(), EditorType.CKEDITOR,
+                request.contentHtml(), request.contentText(), request.contentCiphertext(), request.changeSummary(), request.isEncrypted(),
+                request.contentIv(), request.contentAuthTag(), request.encryptionKdf(), request.isPinned(),
+                userId, true
+        ), AccessContext.admin(userId));
     }
 
     @PostMapping("/{revisionId}/new-version")
@@ -70,17 +70,17 @@ public class WikiPageRevisionController {
         UUID userId = generalService.getIdUserFromSession();
         // Product decision: CKEDITOR remains fixed until other editors are supported.
         return revisionFacade.save(new WikiPageRevisionCreateRequest(
-            revisionId, request.pageId(), null, request.titleSnapshot(), EditorType.CKEDITOR,
-            request.contentHtml(), request.contentText(), request.contentCiphertext(), request.changeSummary(), request.isEncrypted(),
-            request.contentIv(), request.contentAuthTag(), request.encryptionKdf(), request.isPinned(),
-            userId, true
-        ), AccessContext.user(userId));
+                revisionId, request.pageId(), null, request.titleSnapshot(), EditorType.CKEDITOR,
+                request.contentHtml(), request.contentText(), request.contentCiphertext(), request.changeSummary(), request.isEncrypted(),
+                request.contentIv(), request.contentAuthTag(), request.encryptionKdf(), request.isPinned(),
+                userId, true
+        ), AccessContext.admin(userId));
     }
 
     @PostMapping("/restore/{revisionId}")
     @ResponseStatus(HttpStatus.CREATED)
     public WikiPageRevisionViewResponse restore(@PathVariable UUID revisionId) {
         UUID userId = generalService.getIdUserFromSession();
-        return revisionFacade.restore(revisionId, AccessContext.user(userId));
+        return revisionFacade.restore(revisionId, AccessContext.admin(userId));
     }
 }

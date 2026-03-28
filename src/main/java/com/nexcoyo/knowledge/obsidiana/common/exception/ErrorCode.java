@@ -1,0 +1,14 @@
+package com.nexcoyo.knowledge.obsidiana.common.exception;
+
+public enum ErrorCode {
+    VALIDATION_ERROR,
+    BAD_REQUEST,
+    UNAUTHORIZED,
+    NOT_FOUND,
+    INTERNAL_ERROR,
+    REVISION_PAGE_REQUIRED,
+    REVISION_PAGE_MISMATCH,
+    REVISION_UPDATE_CONFLICT,
+    REVISION_INVALID_CIPHERTEXT
+}
+

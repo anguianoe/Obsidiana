@@ -153,3 +153,52 @@ Estado de severidad en esta revalidación (crítica -> media -> baja):
 
 Observación: se confirma que la auditoría incremental de WikiPage permanece cerrada tras la unificación de acceso, cobertura de pruebas y formalización del contrato admin.
 
+---
+
+## Auditoría incremental — 2026-03-28 (WikiPageRevision scope)
+
+### Scope
+Controllers auditados:
+- `WikiPageRevisionController`
+- `WikiPageRevisionAdminController`
+
+Modo: **sin editar / con propuestas**.
+
+### Validación técnica ejecutada
+- `./gradlew test` ✅ (BUILD SUCCESSFUL)
+- `./gradlew build` ✅ (BUILD SUCCESSFUL)
+
+### Hallazgos (crítica -> media -> baja)
+
+#### Crítica
+- **Sin hallazgos críticos en este corte.**
+  - Evidencia de hardening aplicado:
+    - `WikiPageRevisionController` exige `@PreAuthorize("hasRole('USER')")` en `src/main/java/com/nexcoyo/knowledge/obsidiana/controller/WikiPageRevisionController.java:19`.
+    - `WikiPageRevisionAdminController` exige `@PreAuthorize("hasRole('SUPER_ADMIN')")` en `src/main/java/com/nexcoyo/knowledge/obsidiana/controller/WikiPageRevisionAdminController.java:26`.
+    - `SecurityConfig` protege `/api/v1/page-revisions/**` y `/api/v1/admin/page-revisions/**` por rol en `src/main/java/com/nexcoyo/knowledge/obsidiana/config/SecurityConfig.java:64-76`.
+
+#### Media
+1. **Cobertura de pruebas incompleta para endpoint de restore (user/admin)**
+   - Evidencia:
+     - Existen endpoints `POST /{pageId}/restore/{revisionId}` en ambos controllers.
+     - Tests actuales no validan forwarding de `restore(...)` ni contrato `accessUserId` (`userId` en user, `null` en admin).
+   - Riesgo: regresión silenciosa en boundary admin/user del restore.
+   - Propuesta: agregar casos unitarios en `WikiPageRevisionControllerTest` y `WikiPageRevisionAdminControllerTest` para `restore`.
+
+2. **Cobertura de pruebas incompleta para validación de payload cifrado**
+   - Evidencia:
+     - Ambos controllers validan `isEncrypted => contentIv/contentAuthTag/encryptionKdf`.
+     - Tests actuales no ejercitan rutas negativas (`IllegalArgumentException`) para create/update.
+   - Riesgo: cambios futuros podrían aceptar payload cifrado incompleto.
+   - Propuesta: agregar tests negativos para create/update en ambos controllers.
+
+#### Baja
+1. **Duplicación de validación de cifrado en dos controllers**
+   - Evidencia: mismo bloque `if (isEncrypted && missing fields)` en `WikiPageRevisionController` y `WikiPageRevisionAdminController`.
+   - Riesgo: drift funcional entre rutas user/admin al evolucionar validaciones.
+   - Propuesta: extraer validador común (private helper o componente) y reutilizarlo en ambos controllers.
+
+### Resultado del modo solicitado
+- **Sin editar lógica en controllers durante esta auditoría.**
+- Se documentan propuestas para cerrar hallazgos de cobertura y mantenimiento.
+

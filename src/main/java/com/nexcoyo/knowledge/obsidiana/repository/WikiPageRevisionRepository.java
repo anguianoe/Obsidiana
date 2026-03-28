@@ -6,13 +6,23 @@ import java.util.UUID;
 
 import com.nexcoyo.knowledge.obsidiana.entity.WikiPageRevision;
 import com.nexcoyo.knowledge.obsidiana.projection.RevisionSummaryProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface WikiPageRevisionRepository extends JpaRepository< WikiPageRevision, UUID> {
 
+    @EntityGraph(attributePaths = {"page", "createdBy"})
+    Optional<WikiPageRevision> findViewById(UUID id);
+
+    @EntityGraph(attributePaths = {"page", "createdBy"})
     Optional<WikiPageRevision> findTopByPageIdOrderByRevisionNumberDesc(UUID pageId);
+
+    @Query("select coalesce(max(r.revisionNumber), 0) from WikiPageRevision r where r.page.id = :pageId")
+    Integer findMaxRevisionNumberByPageId(@Param("pageId") UUID pageId);
 
     List<WikiPageRevision> findAllByPageIdOrderByRevisionNumberDesc(UUID pageId);
 
@@ -27,7 +37,7 @@ public interface WikiPageRevisionRepository extends JpaRepository< WikiPageRevis
         where r.page.id = :pageId
         order by r.revisionNumber desc
     """)
-    List< RevisionSummaryProjection > findRevisionSummaryByPageId( @Param("pageId") UUID pageId);
+    Page<RevisionSummaryProjection> findRevisionSummaryByPageId(@Param("pageId") UUID pageId, Pageable pageable);
 
     @Query("""
         select r

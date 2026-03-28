@@ -36,6 +36,77 @@ Estado de hallazgos WikiPage (último corte):
 - Medios: 0
 - Bajos: 0
 
+## 🆕 Auditoría incremental de controllers — 2026-03-28 (WikiPageRevision — superficial)
+
+> ⚠️ Reemplazada por auditoría profunda del mismo día. Ver entrada siguiente.
+
+---
+
+## 🆕 Auditoría profunda de controllers — 2026-03-28 (WikiPageRevision)
+
+Documentos nuevos:
+- `CONTROLLER_AUDIT_REPORT_2026-03-28_REVISION.md` ← reporte principal con propuestas
+
+Documentos actualizados:
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección WikiPageRevision profunda reemplazada)
+- `INDICE_COMPLETO_DOCUMENTACION.md` (este archivo)
+
+Scope auditado:
+- `WikiPageRevisionController`
+- `WikiPageRevisionAdminController`
+- (trazado completo: `WikiPageRevisionFacade`, `WikiPageRevisionServiceImpl`, `WikiPageRevisionCryptoService`, `WikiPageRevisionCreateRequest`, `WikiPageRevisionDecryptRequest`, `WikiPageRevisionResponse`, `RestExceptionHandler`, `SecurityConfig`)
+
+Estado validado:
+- `./gradlew test` ✅  (6 tests `WikiPageRevisionControllerTest` · 6 tests `WikiPageRevisionAdminControllerTest` · todos passing)
+- `./gradlew build` ✅
+
+Estado de hallazgos (auditoría sin edición — propuestas):
+- 🔴 Críticos: **3** (C-1: bypass null admin, C-2: decrypt sin actor, C-3: anyRequest permitAll)
+- 🟠 Altos: **6** (clave cifrado al servidor, sin límite contentHtml, validación triplicada, handleGeneric fuga, IllegalArgumentException fuga UUIDs, updatePagePointer nullable)
+- 🟡 Medios: **6** (status codes, path restore, validación crypto fields, PUT semántica, revisionNumber hardcoded, campos crypto en response)
+- 🟢 Bajos: **6** (editorType hardcodeado, paginación, 500 vs 401, whitespace, fetches DB, cobertura tests)
+
+## 🆕 Auditoría de verificación final — 2026-03-28 (WikiPageRevision, sin edición / con propuestas)
+
+Documentos actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-03-28_REVISION.md` (sección de verificación posterior)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección de verificación 2026-03-28)
+
+Scope verificado:
+- `WikiPageRevisionController`
+- `WikiPageRevisionAdminController`
+
+Estado validado:
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+Hallazgos residuales del corte:
+- 🔴 Críticos: **0**
+- 🟡 Medios: **0**
+- 🟢 Bajos: **0**
+
+## 🆕 Ejecución de auditoría solicitada — 2026-03-28 (WikiPageRevision)
+
+Documentos actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-03-28_REVISION.md`
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md`
+
+Scope auditado:
+- `WikiPageRevisionController`
+- `WikiPageRevisionAdminController`
+
+Modo:
+- Sin edición / con propuestas
+
+Estado validado:
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+Resultado por severidad:
+- 🔴 Críticos: **0**
+- 🟡 Medios: **0**
+- 🟢 Bajos: **0**
+
 ---
 
 ## 📚 Documentos en la Raíz del Proyecto
