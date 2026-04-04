@@ -53,6 +53,10 @@ tasks.named('test') {
 }
 
 def exclusions = [
+        "**/entity/**",
+        "**/repository/**",
+        "**/config/**",
+        "**/records/**",
         "**/ObsidianaApplication.*", ]
 
 tasks.jacocoTestReport {

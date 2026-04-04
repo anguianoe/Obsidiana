@@ -243,4 +243,36 @@ Documento de detalle:
 Documento de detalle:
 - `CONTROLLER_AUDIT_REPORT_2026-04-04_TRASH.md`
 
+---
+
+## Auditoría solicitada — 2026-04-04 (Tag scope)
+
+### Scope
+- `TagController`
+- `TagAdminController`
+
+### Baseline técnico validado
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.TagControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.TagAdminControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.TagServiceImplTest"` ✅
+- `./gradlew -q test` ✅
+- `./gradlew -q build` ✅
+
+### Estado por controller
+
+| Controller | Estado actual | Hallazgos principales |
+|---|---|---|
+| `TagController` | OK | Ninguno |
+| `TagAdminController` | OK | Ninguno |
+
+### Matriz de hallazgos y propuestas
+
+| Severidad | Hallazgo | Evidencia | Propuesta |
+|---|---|---|---|
+| Crítica | Sin hallazgos críticos en este corte | `@PreAuthorize` en ambos controllers + reglas explícitas en `SecurityConfig` para `/api/v1/tags/**` y `/api/v1/admin/tags/**` | Mantener cobertura y revalidación periódica |
+| Media | En admin, actor de auditoría dependía de campos del cliente (`createdBy` / `actorUserId`) | `TagAdminController` ahora deriva actor desde sesión para `create/update/assign` | ✅ Resuelto |
+| Baja | Evaluación de relación por página en workspace podía generar patrón N+1 | `TagServiceImpl` usa `WikiPageRepository.existsAccessibleByWorkspaceIdAndUserId(...)` (query única) | ✅ Resuelto |
+| Baja | Faltaban tests positivos de ramas page-based en user flow | `TagServiceImplTest` ahora cubre éxito para `saveTag(user)`, `assignTag(user)`, `getPageAssignments(user)` por page relation | ✅ Resuelto |
+
+Documento de detalle:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_TAGS.md`
+
 

@@ -35,6 +35,23 @@ public interface WikiPageRepository extends JpaRepository<WikiPage, UUID>, JpaSp
     boolean existsAccessibleByIdAndUserId(@Param("pageId") UUID pageId, @Param("userId") UUID userId);
 
     @Query("""
+        select count(p) > 0
+        from WikiPage p
+        join PageWorkspaceLink pwl on pwl.page.id = p.id
+        where pwl.workspace.id = :workspaceId
+          and (
+            p.ownerUser.id = :userId
+            or exists (
+              select wm from WorkspaceMembership wm
+              where wm.workspace.id = pwl.workspace.id
+                and wm.user.id = :userId
+                and wm.status = com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus.ACTIVE
+            )
+          )
+    """)
+    boolean existsAccessibleByWorkspaceIdAndUserId(@Param("workspaceId") UUID workspaceId, @Param("userId") UUID userId);
+
+    @Query("""
         select p
         from WikiPage p
         join PageWorkspaceLink pwl on pwl.page.id = p.id

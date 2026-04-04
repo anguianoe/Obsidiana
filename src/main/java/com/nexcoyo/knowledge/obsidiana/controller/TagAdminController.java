@@ -5,8 +5,10 @@ import com.nexcoyo.knowledge.obsidiana.dto.request.WorkspaceTagUpsertRequest;
 import com.nexcoyo.knowledge.obsidiana.dto.response.PageTagAssignmentResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WorkspaceTagResponse;
 import com.nexcoyo.knowledge.obsidiana.facade.TagFacade;
+import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,10 +24,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/admin/tags")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class TagAdminController
 {
 
     private final TagFacade tagFacade;
+    private final GeneralService generalService;
 
     @GetMapping("/workspace/{workspaceId}")
     public List< WorkspaceTagResponse > activeTags( @PathVariable UUID workspaceId) {
@@ -34,17 +38,26 @@ public class TagAdminController
 
     @PostMapping
     public WorkspaceTagResponse create(@Valid @RequestBody WorkspaceTagUpsertRequest request) {
-        return tagFacade.save(request);
+        UUID actorId = generalService.getIdUserFromSession();
+        return tagFacade.save(new WorkspaceTagUpsertRequest(
+            request.id(),
+            request.workspaceId(),
+            request.name(),
+            request.tagStatus(),
+            actorId
+        ));
     }
 
     @PutMapping("/{tagId}")
     public WorkspaceTagResponse update(@PathVariable UUID tagId, @Valid @RequestBody WorkspaceTagUpsertRequest request) {
-        return tagFacade.save(new WorkspaceTagUpsertRequest(tagId, request.workspaceId(), request.name(), request.tagStatus(), request.createdBy()));
+        UUID actorId = generalService.getIdUserFromSession();
+        return tagFacade.save(new WorkspaceTagUpsertRequest(tagId, request.workspaceId(), request.name(), request.tagStatus(), actorId));
     }
 
     @PostMapping("/assign")
     public PageTagAssignmentResponse assign( @Valid @RequestBody AssignTagRequest request) {
-        return tagFacade.assign(request);
+        UUID actorId = generalService.getIdUserFromSession();
+        return tagFacade.assign(new AssignTagRequest(request.pageId(), request.workspaceId(), request.tagId(), actorId));
     }
 
     @GetMapping("/assignments")

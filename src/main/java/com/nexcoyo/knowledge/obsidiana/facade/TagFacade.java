@@ -26,6 +26,10 @@ public class TagFacade {
         return tagService.getActiveTags(workspaceId).stream().map( ApiMapper::toResponse).toList();
     }
 
+    public List<WorkspaceTagResponse> activeTagsForUser(UUID workspaceId, UUID userId) {
+        return tagService.getActiveTags(workspaceId, userId).stream().map(ApiMapper::toResponse).toList();
+    }
+
     public WorkspaceTagResponse save( WorkspaceTagUpsertRequest request) {
         WorkspaceTag entity = new WorkspaceTag();
         if (request.id() != null) {
@@ -41,11 +45,34 @@ public class TagFacade {
         return ApiMapper.toResponse(tagService.saveTag(entity));
     }
 
+    public WorkspaceTagResponse saveForUser(WorkspaceTagUpsertRequest request, UUID userId) {
+        WorkspaceTag entity = new WorkspaceTag();
+        if (request.id() != null) {
+            entity.setId(request.id());
+        }
+        entity.setWorkspace(refs.workspace(request.workspaceId()));
+        entity.setName(request.name());
+        entity.setTagStatus(request.tagStatus());
+        entity.setCreatedBy(refs.user(userId));
+        if (entity.getCreatedAt() == null) {
+            entity.setCreatedAt(OffsetDateTime.now());
+        }
+        return ApiMapper.toResponse(tagService.saveTag(entity, userId));
+    }
+
     public PageTagAssignmentResponse assign( AssignTagRequest request) {
         return ApiMapper.toResponse(tagService.assignTag(request.pageId(), request.workspaceId(), request.tagId(), request.actorUserId()));
     }
 
+    public PageTagAssignmentResponse assignForUser(AssignTagRequest request, UUID userId) {
+        return ApiMapper.toResponse(tagService.assignTag(request.pageId(), request.workspaceId(), request.tagId(), userId, userId));
+    }
+
     public List<PageTagAssignmentResponse> assignments(UUID pageId, UUID workspaceId) {
         return tagService.getPageAssignments(pageId, workspaceId).stream().map(ApiMapper::toResponse).toList();
+    }
+
+    public List<PageTagAssignmentResponse> assignmentsForUser(UUID pageId, UUID workspaceId, UUID userId) {
+        return tagService.getPageAssignments(pageId, workspaceId, userId).stream().map(ApiMapper::toResponse).toList();
     }
 }

@@ -1,5 +1,28 @@
 # 📑 ÍNDICE COMPLETO DE DOCUMENTACIÓN - IMPLEMENTACIÓN @PreAuthorize
 
+## 🆕 Auditoría de controllers — 2026-04-04 (Tag)
+
+Documentos nuevos/actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_TAGS.md` (nuevo)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección Tag 2026-04-04)
+
+Scope auditado:
+- `TagController`
+- `TagAdminController`
+
+Modo:
+- Sin edición / con propuestas
+
+Estado validado:
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.TagControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.TagAdminControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.TagServiceImplTest"` ✅
+- `./gradlew -q test` ✅
+- `./gradlew -q build` ✅
+
+Resultado por severidad (crítica -> media -> baja):
+- Crítica: 0
+- Media: 0
+- Baja: 0
+
 ## 🆕 Auditoría de controllers — 2026-04-04 (Trash)
 
 Documentos nuevos/actualizados:

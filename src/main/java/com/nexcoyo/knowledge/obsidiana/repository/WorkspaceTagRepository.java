@@ -7,5 +7,6 @@ import com.nexcoyo.knowledge.obsidiana.entity.WorkspaceTag;import com.nexcoyo.kn
 
 public interface WorkspaceTagRepository extends JpaRepository<WorkspaceTag, UUID> {
     List<WorkspaceTag> findAllByWorkspaceIdAndTagStatusOrderByNameAsc(UUID workspaceId, TagStatus tagStatus);
+    List<WorkspaceTag> findAllByWorkspaceIdAndTagStatusAndCreatedByIdOrderByNameAsc(UUID workspaceId, TagStatus tagStatus, UUID createdById);
     Optional<WorkspaceTag> findByWorkspaceIdAndNameIgnoreCase(UUID workspaceId, String name);
 }
