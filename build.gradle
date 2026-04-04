@@ -1,11 +1,12 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.springframework.boot' version '4.0.3'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.nexcoyo.knowledge'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.1'
 
 java {
     toolchain {
@@ -48,4 +49,45 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy tasks.jacocoTestReport
+}
+
+def exclusions = [
+        "**/ObsidianaApplication.*", ]
+
+tasks.jacocoTestReport {
+    dependsOn tasks.test
+
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+    }
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect { dir ->
+            fileTree(dir: dir, exclude: exclusions)
+        }))
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn tasks.test
+
+    afterEvaluate {
+        getClassDirectories().setFrom(classDirectories.files.collect {
+            fileTree(dir: it, exclude: exclusions)
+        })
+    }
+
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.2}
+        }
+    }
+}
+
+tasks.check {
+    dependsOn tasks.jacocoTestCoverageVerification
 }

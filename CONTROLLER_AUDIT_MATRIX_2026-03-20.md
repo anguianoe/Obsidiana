@@ -158,4 +158,89 @@ Resultado por severidad:
 - 🟡 Media: 0
 - 🟢 Baja: 0
 
+---
+
+## Auditoría solicitada — 2026-04-04 (Requested controller set)
+
+### Scope solicitado
+- `AlertController`
+- `AuthController`
+- `CompanyController`
+- `EngineerController`
+- `ExcelFileController`
+- `OrchardController`
+- `PackagingController`
+- `ReportsController`
+- `RunsController`
+- `SuppliersController`
+- `UserController`
+- `UserNormalController`
+- `UserProfileController`
+
+### Baseline tecnico validado
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+### Cobertura real de scope en este repo
+
+| Controller | Estado en repo | Estado auditoria |
+|---|---|---|
+| `AuthController` | Existe | Auditado |
+| `UserProfileController` | Existe | Auditado |
+| `AlertController` | No existe | No auditable |
+| `CompanyController` | No existe | No auditable |
+| `EngineerController` | No existe | No auditable |
+| `ExcelFileController` | No existe | No auditable |
+| `OrchardController` | No existe | No auditable |
+| `PackagingController` | No existe | No auditable |
+| `ReportsController` | No existe | No auditable |
+| `RunsController` | No existe | No auditable |
+| `SuppliersController` | No existe | No auditable |
+| `UserController` | No existe | No auditable |
+| `UserNormalController` | No existe | No auditable |
+
+### Hallazgos por severidad
+
+| Severidad | Conteo | Nota |
+|---|---:|---|
+| Critica | 2 | Scope incompleto + posible IDOR en `UserProfileController.getProfile` |
+| Media | 2 | Contrato read/write de perfil desalineado + respuestas auth sin DTO tipado |
+| Baja | 2 | Estandar de payload logout + faltante de documentacion API |
+
+Documento de detalle:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_REQUESTED_SET.md`
+
+---
+
+## Auditoría solicitada — 2026-04-04 (Trash scope)
+
+### Scope
+- `TrashController`
+- `TrashAdminController`
+
+### Baseline técnico validado
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashAdminControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.TrashServiceImplTest"` ✅
+- `./gradlew -q test` ✅
+- `./gradlew -q build` ✅
+
+### Estado por controller
+
+| Controller | Estado actual | Hallazgos principales |
+|---|---|---|
+| `TrashController` | OK | Ninguno |
+| `TrashAdminController` | OK | Ninguno |
+
+### Matriz de hallazgos y propuestas
+
+| Severidad | Hallazgo | Evidencia | Propuesta |
+|---|---|---|---|
+| Crítica | Sin hallazgos críticos en este corte | `@PreAuthorize` en ambos controllers + JWT + `anyRequest().authenticated()` | Mantener cobertura y validación de boundary user/admin |
+| Media | `RestoreTrashRequest.restoredBy` era obligatorio en USER aunque se ignoraba | Nuevo DTO `UserRestoreTrashRequest` | ✅ Resuelto |
+| Media | `TrashRecordCreateRequest.deletedBy` se exponía en USER pero el servicio lo sobrescribía | Nuevo DTO `UserTrashRecordCreateRequest` | ✅ Resuelto |
+| Baja | `/trash` y `/admin/trash` no estaban explicitados en `SecurityConfig` | Matchers explícitos agregados en `SecurityConfig` | ✅ Resuelto |
+| Baja | La matriz de acceso USER variaba entre endpoints y requería documentación | JavaDoc + `TRASH_ACCESS_CONTRACT.md` | ✅ Resuelto |
+
+Documento de detalle:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_TRASH.md`
+
 

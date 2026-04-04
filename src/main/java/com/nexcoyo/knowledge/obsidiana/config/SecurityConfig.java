@@ -66,13 +66,16 @@ public class SecurityConfig {
                                     API_ADMIN + "/workspaces/**",
                                     API_ADMIN + "/pages/**",
                                     API_ADMIN + "/page-revisions/**",
-                                    API_ADMIN + "/tags/**"
+                                     API_ADMIN + "/tags/**",
+                                     API_ADMIN + "/trash/**"
                             ).hasRole( "SUPER_ADMIN" )
                             .requestMatchers(
                                     API + "/workspaces/**",
                                     API + "/pages/**",
                                     API + "/page-revisions/**",
-                                    API + "/tags/**"
+                                    API + "/users/**",
+                                     API + "/tags/**",
+                                     API + "/trash/**"
                             ).hasRole( "USER" )
                             /*
 

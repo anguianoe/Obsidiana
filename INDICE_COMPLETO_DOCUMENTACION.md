@@ -1,5 +1,51 @@
 # 📑 ÍNDICE COMPLETO DE DOCUMENTACIÓN - IMPLEMENTACIÓN @PreAuthorize
 
+## 🆕 Auditoría de controllers — 2026-04-04 (Trash)
+
+Documentos nuevos/actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_TRASH.md` (nuevo)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección Trash 2026-04-04)
+- `TRASH_ACCESS_CONTRACT.md` (nuevo)
+
+Scope auditado:
+- `TrashController`
+- `TrashAdminController`
+
+Modo:
+- Sin editar / con propuestas
+
+Estado validado:
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashAdminControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.TrashServiceImplTest"` ✅
+- `./gradlew -q test` ✅
+- `./gradlew -q build` ✅
+
+Resultado por severidad:
+- Crítica: 0
+- Media: 0
+- Baja: 0
+
+## 🆕 Auditoría solicitada de controllers — 2026-04-04
+
+Documentos nuevos/actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_REQUESTED_SET.md` (nuevo)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección 2026-04-04)
+
+Scope solicitado:
+- `AlertController`, `AuthController`, `CompanyController`, `EngineerController`, `ExcelFileController`, `OrchardController`, `PackagingController`, `ReportsController`, `RunsController`, `SuppliersController`, `UserController`, `UserNormalController`, `UserProfileController`
+
+Cobertura real en este repo:
+- Auditados: `AuthController`, `UserProfileController`
+- No encontrados en este repo: `AlertController`, `CompanyController`, `EngineerController`, `ExcelFileController`, `OrchardController`, `PackagingController`, `ReportsController`, `RunsController`, `SuppliersController`, `UserController`, `UserNormalController`
+
+Estado validado:
+- `./gradlew test` ✅
+- `./gradlew build` ✅
+
+Resultado por severidad (crítica -> media -> baja):
+- Crítica: 2
+- Media: 2
+- Baja: 2
+
 ## 🆕 Auditoría de controllers — 2026-03-20
 
 Documentos nuevos:

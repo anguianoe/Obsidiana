@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.UUID;
 
-public record TrashRecordCreateRequest(
+public record UserTrashRecordCreateRequest(
     UUID id,
     @NotNull TrashEntityType entityType,
     @NotNull UUID entityId,
@@ -16,10 +16,10 @@ public record TrashRecordCreateRequest(
     UUID pageId,
     UUID assetId,
     UUID commentId,
-    UUID deletedBy,
     @Size(max = 255) String deleteReason,
     JsonNode snapshotPayload,
     Instant restoreDeadlineAt,
     Instant purgeScheduledAt,
     @NotNull TrashStatus status
 ) {}
+

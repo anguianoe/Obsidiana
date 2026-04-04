@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -40,5 +41,5 @@ public class RestoreAudit extends BaseUuidEntity {
     private JsonNode restorePayload;
 
     @Column(name = "restored_at", nullable = false)
-    private OffsetDateTime restoredAt;
+    private Instant restoredAt;
 }

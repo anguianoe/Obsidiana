@@ -1,6 +1,6 @@
 package com.nexcoyo.knowledge.obsidiana.repository;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +15,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface TrashRecordRepository extends JpaRepository<TrashRecord, UUID>, JpaSpecificationExecutor<TrashRecord> {
     Optional<TrashRecord> findByEntityTypeAndEntityIdAndStatus( TrashEntityType entityType, UUID entityId, TrashStatus status);
-    List<TrashRecord> findAllByStatusAndRestoreDeadlineAtBefore(TrashStatus status, OffsetDateTime restoreDeadlineAt);
+    Optional<TrashRecord> findByIdAndDeletedById(UUID id, UUID deletedById);
+    List<TrashRecord> findAllByStatusAndRestoreDeadlineAtBefore(TrashStatus status, Instant restoreDeadlineAt);
+    List<TrashRecord> findAllByStatusAndRestoreDeadlineAtBeforeAndDeletedById(TrashStatus status, Instant restoreDeadlineAt, UUID deletedById);
     Page< TrashRecord > findAllByWorkspaceId( UUID workspaceId, Pageable pageable);
 }

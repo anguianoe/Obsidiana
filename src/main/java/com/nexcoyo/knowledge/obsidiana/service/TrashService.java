@@ -15,4 +15,12 @@ public interface TrashService {
     TrashRecord getRequired(UUID trashRecordId);
     RestoreAudit restore( UUID trashRecordId, UUID restoredBy, String reason);
     List< TrashRecord > findOverdueTrash();
+
+    Page<TrashRecord> search( TrashRecordSearchCriteria criteria, Pageable pageable, UUID userId);
+    TrashRecord moveToTrash(TrashRecord trashRecord,UUID userId);
+    TrashRecord getRequired(UUID trashRecordId,UUID userId);
+    RestoreAudit restore( UUID trashRecordId, UUID restoredBy, String reason, UUID userId);
+    List< TrashRecord > findOverdueTrash(UUID userId);
+
+
 }
