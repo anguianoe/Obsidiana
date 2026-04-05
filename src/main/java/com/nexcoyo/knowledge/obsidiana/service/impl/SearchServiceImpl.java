@@ -30,8 +30,18 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
+    public List< CommentThreadProjection > loadCommentThread( UUID userId, UUID pageId, UUID workspaceId, UUID parentCommentId) {
+        return pageCommentRepository.findThreadForUser(userId, pageId, workspaceId, parentCommentId);
+    }
+
+    @Override
     public List< CommentThreadProjection > loadCommentThread( UUID pageId, UUID workspaceId, UUID parentCommentId) {
         return pageCommentRepository.findThread(pageId, workspaceId, parentCommentId);
+    }
+
+    @Override
+    public Page< StoredAsset > searchOrphanAssets( UUID userId, Pageable pageable) {
+        return storedAssetRepository.findOrphanCandidatesByUploadedBy(userId, pageable);
     }
 
     @Override

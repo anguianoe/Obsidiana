@@ -7,6 +7,8 @@ import java.util.UUID;
 import com.nexcoyo.knowledge.obsidiana.entity.PublicPagePublication;
 import com.nexcoyo.knowledge.obsidiana.projection.PublicPageSummaryProjection;
 import com.nexcoyo.knowledge.obsidiana.util.enums.PublicationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -26,5 +28,5 @@ public interface PublicPagePublicationRepository extends JpaRepository<PublicPag
         where p.publicationStatus = com.nexcoyo.knowledge.obsidiana.util.enums.PublicationStatus.LIVE
         order by p.publishedAt desc
     """)
-    List< PublicPageSummaryProjection > findLivePublicationSummaries();
+    Page< PublicPageSummaryProjection > findLivePublicationSummaries( Pageable pageable);
 }

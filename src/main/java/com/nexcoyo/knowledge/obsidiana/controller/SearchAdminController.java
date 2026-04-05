@@ -8,7 +8,6 @@ import com.nexcoyo.knowledge.obsidiana.dto.response.CommentThreadResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.StoredAssetResponse;
 import com.nexcoyo.knowledge.obsidiana.dto.response.WikiPageResponse;
 import com.nexcoyo.knowledge.obsidiana.facade.SearchFacade;
-import com.nexcoyo.knowledge.obsidiana.service.GeneralService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -16,38 +15,45 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/search")
+@RequestMapping("/api/v1/admin/search")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('USER')")
-public class SearchController {
+@PreAuthorize("hasRole('SUPER_ADMIN')")
+public class SearchAdminController {
 
     private final SearchFacade searchFacade;
-    private final GeneralService generalService;
 
     @GetMapping("/pages/accessible")
     public PageResponse< WikiPageResponse > accessiblePages(
-        @RequestParam(required = false) UUID workspaceId,
-        @RequestParam(required = false) UUID tagId,
-        @RequestParam(required = false) String searchText,
-        @PageableDefault(size = 50) Pageable pageable
+            @RequestParam UUID userId,
+            @RequestParam(required = false) UUID workspaceId,
+            @RequestParam(required = false) UUID tagId,
+            @RequestParam(required = false) String searchText,
+            @PageableDefault(size = 50) Pageable pageable
     ) {
-        UUID userId = generalService.getIdUserFromSession();
         return searchFacade.accessiblePages(userId, workspaceId, tagId, searchText, pageable);
     }
 
     @GetMapping("/comments/thread")
     public List< CommentThreadResponse > commentThread(
-        @RequestParam UUID pageId,
-        @RequestParam UUID workspaceId,
-        @RequestParam(required = false) UUID parentCommentId
+            @RequestParam(required = false) UUID userId,
+            @RequestParam UUID pageId,
+            @RequestParam UUID workspaceId,
+            @RequestParam(required = false) UUID parentCommentId
     ) {
-        UUID userId = generalService.getIdUserFromSession();
+        if (userId == null) {
+            return searchFacade.commentThread(pageId, workspaceId, parentCommentId);
+        }
         return searchFacade.commentThread(userId, pageId, workspaceId, parentCommentId);
     }
 
     @GetMapping("/assets/orphans")
-    public PageResponse< StoredAssetResponse > orphanAssets( @PageableDefault(size = 50) Pageable pageable) {
-        UUID userId = generalService.getIdUserFromSession();
+    public PageResponse< StoredAssetResponse > orphanAssets(
+            @RequestParam(required = false) UUID userId,
+            @PageableDefault(size = 50) Pageable pageable
+    ) {
+        if (userId == null) {
+            return searchFacade.orphanAssets(pageable);
+        }
         return searchFacade.orphanAssets(userId, pageable);
     }
 }

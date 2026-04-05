@@ -1,5 +1,6 @@
 package com.nexcoyo.knowledge.obsidiana.projection;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -9,5 +10,5 @@ public interface PublicPageSummaryProjection {
     UUID getRevisionId();
     String getPublicSlug();
     String getPublicTitle();
-    OffsetDateTime getPublishedAt();
+    Instant getPublishedAt();
 }

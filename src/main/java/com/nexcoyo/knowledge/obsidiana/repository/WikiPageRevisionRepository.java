@@ -15,6 +15,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface WikiPageRevisionRepository extends JpaRepository< WikiPageRevision, UUID> {
 
+    boolean existsByIdAndPageId(UUID id, UUID pageId);
+
     @EntityGraph(attributePaths = {"page", "createdBy"})
     Optional<WikiPageRevision> findViewById(UUID id);
 

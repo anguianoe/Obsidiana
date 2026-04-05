@@ -39,4 +39,16 @@ public interface StoredAssetRepository extends JpaRepository< StoredAsset, UUID>
         order by a.createdAt asc
     """)
     Page<StoredAsset> findOrphanCandidates(Pageable pageable);
+
+    @Query("""
+        select a
+        from StoredAsset a
+        where a.status = com.nexcoyo.knowledge.obsidiana.util.enums.AssetStatus.ACTIVE
+          and a.uploadedBy.id = :userId
+          and not exists (select 1 from PageAsset pa where pa.asset.id = a.id)
+          and not exists (select 1 from PageRevisionAssetRef pr where pr.asset.id = a.id)
+          and not exists (select 1 from PublicPageAsset ppa where ppa.asset.id = a.id)
+        order by a.createdAt asc
+    """)
+    Page<StoredAsset> findOrphanCandidatesByUploadedBy(@Param("userId") UUID userId, Pageable pageable);
 }

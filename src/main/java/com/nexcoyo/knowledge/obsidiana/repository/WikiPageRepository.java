@@ -55,10 +55,17 @@ public interface WikiPageRepository extends JpaRepository<WikiPage, UUID>, JpaSp
         select p
         from WikiPage p
         join PageWorkspaceLink pwl on pwl.page.id = p.id
-        join WorkspaceMembership wm on wm.workspace.id = pwl.workspace.id
         left join PageTagAssignment pta on pta.page.id = p.id and pta.workspace.id = pwl.workspace.id
-        where wm.user.id = :userId
-          and wm.status = com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus.ACTIVE
+        where (
+              p.ownerUser.id = :userId
+              or exists (
+                    select wm.id
+                    from WorkspaceMembership wm
+                    where wm.workspace.id = pwl.workspace.id
+                      and wm.user.id = :userId
+                      and wm.status = com.nexcoyo.knowledge.obsidiana.util.enums.MembershipStatus.ACTIVE
+              )
+          )
           and p.pageStatus = com.nexcoyo.knowledge.obsidiana.util.enums.PageStatus.ACTIVE
           and (:workspaceId is null or pwl.workspace.id = :workspaceId)
           and (:tagId is null or pta.tag.id = :tagId)

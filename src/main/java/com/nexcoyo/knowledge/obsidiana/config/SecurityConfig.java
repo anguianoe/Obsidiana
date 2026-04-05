@@ -60,36 +60,29 @@ public class SecurityConfig {
                                     PathPatternRequestMatcher.withDefaults().matcher("/**/*.ttf")
                             ).permitAll()
                             .requestMatchers( HttpMethod.GET, "/actuator/health").permitAll()
-                            .requestMatchers(API + "/auth/**").permitAll()
+                            .requestMatchers(API + "/auth/**",
+                                    API + "/publications/live/**"
+                            ).permitAll()
                             .requestMatchers(
                                     API_ADMIN + "/users/**",
                                     API_ADMIN + "/workspaces/**",
                                     API_ADMIN + "/pages/**",
                                     API_ADMIN + "/page-revisions/**",
-                                     API_ADMIN + "/tags/**",
-                                     API_ADMIN + "/trash/**"
+                                    API_ADMIN + "/tags/**",
+                                    API_ADMIN + "/search/**",
+                                    API_ADMIN + "/trash/**",
+                                    API + "/publications/admin/publish"
                             ).hasRole( "SUPER_ADMIN" )
                             .requestMatchers(
                                     API + "/workspaces/**",
                                     API + "/pages/**",
                                     API + "/page-revisions/**",
                                     API + "/users/**",
-                                     API + "/tags/**",
-                                     API + "/trash/**"
+                                    API + "/tags/**",
+                                    API + "/search/**",
+                                    API + "/trash/**",
+                                    API + "/publications/public/publish"
                             ).hasRole( "USER" )
-                            /*
-
-                            // ✅ ADMIN o USER
-                            .requestMatchers(
-                                    API + "/user-actions/**",
-                                    API + "/engineer/**",
-                                    API + "/orchard/**",
-                                    API + "/suppliers/**",
-                                    API + "/excel-files/**",
-                                    API + "/runs/**",
-                                    API + "/reports/**"
-                            ).hasAnyRole("ADMIN", "USER")
-                            //.requestMatchers(API + "/**").authenticated()*/
                             .anyRequest().authenticated()
                     )
                     .addFilterBefore(authJwtFilter, UsernamePasswordAuthenticationFilter.class);

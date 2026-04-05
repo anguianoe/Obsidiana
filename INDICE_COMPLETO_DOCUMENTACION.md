@@ -35,7 +35,7 @@ Scope auditado:
 - `TrashAdminController`
 
 Modo:
-- Sin editar / con propuestas
+- Sin editar / con propuestas, seguido de remediación media+baja
 
 Estado validado:
 - `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.TrashAdminControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.TrashServiceImplTest"` ✅
@@ -177,6 +177,49 @@ Resultado por severidad:
 - 🟢 Bajos: **0**
 
 ---
+
+## 🆕 Auditoría de controllers — 2026-04-04 (Search)
+
+Documentos nuevos/actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_SEARCH.md` (nuevo)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección Search 2026-04-04)
+
+Scope auditado:
+- `SearchController`
+- `SearchAdminController`
+
+Modo:
+- Sin editar / con propuestas, seguido de remediación media+baja
+
+Estado validado:
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.SearchControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.SearchAdminControllerTest"` ✅
+- `./gradlew -q build` ✅
+
+Resultado por severidad (crítica -> media -> baja):
+- Crítica: 0
+- Media: 0
+- Baja: 0
+
+## 🆕 Auditoría de controllers — 2026-04-05 (Publication)
+
+Documentos nuevos/actualizados:
+- `CONTROLLER_AUDIT_REPORT_2026-04-05_PUBLICATION.md` (nuevo)
+- `CONTROLLER_AUDIT_MATRIX_2026-03-20.md` (sección Publication 2026-04-05)
+
+Scope auditado:
+- `PublicationController`
+
+Modo:
+- Sin editar / con propuestas
+
+Estado validado:
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.PublicationControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.PublicationControllerWebMvcTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.PublicationServiceImplTest"` ✅
+- `./gradlew -q build` ✅
+
+Resultado por severidad (crítica -> media -> baja):
+- Crítica: 0
+- Media: 0
+- Baja: 0
 
 ## 📚 Documentos en la Raíz del Proyecto
 

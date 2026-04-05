@@ -275,4 +275,48 @@ Documento de detalle:
 Documento de detalle:
 - `CONTROLLER_AUDIT_REPORT_2026-04-04_TAGS.md`
 
+---
+
+## Auditoría solicitada — 2026-04-04 (Search scope)
+
+### Scope
+- `SearchController`
+- `SearchAdminController`
+
+### Baseline tecnico validado
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.SearchControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.SearchAdminControllerTest"` ✅
+- `./gradlew -q build` ✅
+
+### Hallazgos por severidad
+
+| Severidad | Conteo | Nota |
+|---|---:|---|
+| Critica | 0 | Sin hallazgos criticos activos |
+| Media | 0 | Resuelto: contrato admin homogeneizado con `userId` opcional en `commentThread` y `orphanAssets` |
+| Baja | 0 | Resuelto: `@PageableDefault(size=50)`, cap `200` en facade y pruebas unitarias ampliadas |
+
+Documento de detalle:
+- `CONTROLLER_AUDIT_REPORT_2026-04-04_SEARCH.md`
+
+---
+
+## Auditoría solicitada — 2026-04-05 (Publication scope)
+
+### Scope
+- `PublicationController`
+
+### Baseline tecnico validado
+- `./gradlew -q test --tests "com.nexcoyo.knowledge.obsidiana.controller.PublicationControllerTest" --tests "com.nexcoyo.knowledge.obsidiana.controller.PublicationControllerWebMvcTest" --tests "com.nexcoyo.knowledge.obsidiana.service.impl.PublicationServiceImplTest"` ✅
+- `./gradlew -q build` ✅
+
+### Hallazgos por severidad
+
+| Severidad | Conteo | Nota |
+|---|---:|---|
+| Critica | 0 | Sin hallazgos criticos activos |
+| Media | 0 | Resuelto: `ErrorCode.FORBIDDEN`, validacion page-revision y actor admin de sesión |
+| Baja | 0 | Resuelto: cap de paginación (`200`) + `PublicationControllerWebMvcTest` |
+
+Documento de detalle:
+- `CONTROLLER_AUDIT_REPORT_2026-04-05_PUBLICATION.md`
 

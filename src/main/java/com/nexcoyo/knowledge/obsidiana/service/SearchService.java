@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 
 public interface SearchService {
     Page< WikiPage > searchAccessiblePages( UUID userId, UUID workspaceId, UUID tagId, String searchText, Pageable pageable);
+    List< CommentThreadProjection > loadCommentThread( UUID userId, UUID pageId, UUID workspaceId, UUID parentCommentId);
     List< CommentThreadProjection > loadCommentThread( UUID pageId, UUID workspaceId, UUID parentCommentId);
+    Page< StoredAsset > searchOrphanAssets( UUID userId, Pageable pageable);
     Page< StoredAsset > searchOrphanAssets( Pageable pageable);
 }
